@@ -7,10 +7,12 @@ import { connectDB } from "./database/db.js";
 import Razorpay from "razorpay";
 import cors from "cors";
 import aiRoute from "./routes/aiRoutes.js";
-import http from "http"; // ✅ Add this
-import { Server } from "socket.io"; // ✅ Add this
-import { router as chatRoutes } from "./routes/chatRoutes.js"; // ✅ Add chat routes
+import http from "http";
+import { Server } from "socket.io"; 
+import { router as chatRoutes } from "./routes/chatRoutes.js"; 
 import axios from "axios";
+import path from "path";
+import { fileURLToPath } from "url";
 import aiController from "./controllers/aiController.js";
 dotenv.config();
 
@@ -20,17 +22,20 @@ export const instance = new Razorpay({
 });
 
 const app = express();
-const server = http.createServer(app); // ✅ Use HTTP server for socket.io
+const server = http.createServer(app); 
 
-// Setup Socket.IO server
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
 const io = new Server(server, {
   cors: {
-    origin: "*", // ✅ Allow frontend to connect
+    origin: "*", 
     methods: ["GET", "POST"],
   },
 });
 
-// Expose `io` to requests
 app.use((req, res, next) => {
   req.io = io;
   next();
@@ -49,6 +54,7 @@ app.use("/api", userRoute);
 app.use("/api", courseRoute);
 app.use("/api", adminRoute);
 app.use("/api/chat", chatRoutes);
+app.use("/gemini", aiRoute);
 
 io.on("connection", (socket) => {
   console.log("A user connected to chat");
@@ -61,8 +67,6 @@ io.on("connection", (socket) => {
 // Start server
 const port = process.env.PORT || 5000;
 server.listen(port, () => {
-  console.log(`Server running on port ${port}`);
   connectDB();
 });
 
-app.use("/gemini", aiRoute);
