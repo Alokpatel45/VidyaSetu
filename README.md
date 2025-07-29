@@ -1,4 +1,4 @@
-# VidtaSetu
+# VidyaSetu
 
 2.0 version of previous project
 
