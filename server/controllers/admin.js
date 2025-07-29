@@ -140,7 +140,7 @@ export const updateRole = tryCatch(async (req, res) => {
     });
   }
   if (user.role === "admin") {
-    user.role = "admin";
+    user.role = "user";
     await user.save();
     return res.status(200).json({
       message: "role updated",
