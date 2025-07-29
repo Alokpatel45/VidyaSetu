@@ -1,10 +1,10 @@
-# eLearning2.0
+# VidtaSetu
 
 2.0 version of previous project
 
 ## Project Overview
 
-**eLearning2.0** is the next generation of the previous eLearning project, designed to provide an enhanced online learning experience. The repository contains the updated and improved version, aiming to deliver better features, performance, and usability.
+**VidtaSetu** is the next generation of the previous eLearning project, designed to provide an enhanced online learning experience. The repository contains the updated and improved version, aiming to deliver better features, performance, and usability.
 
 ## Features
 
@@ -21,7 +21,7 @@
 To set up the project locally:
 
 1. Clone the repository:
-   git clone https://github.com/Alokpatel45/eLearning2.0.git
+   git clone https://github.com/Alokpatel45/VidtaSetu.git
 2. Navigate to the project directory:
    cd eLearning2.0
 3. Install the dependencies:
