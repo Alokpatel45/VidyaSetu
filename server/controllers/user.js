@@ -29,7 +29,7 @@ export const Register = tryCatch(async (req, res) => {
     { expiresIn: "5m" }
   );
 
-  await sendMail(email, "eLearning", { name, otp });
+  await sendMail(email, "VidyaSetu", { name, otp });
 
   res.status(200).json({
     message: "OTP sent to your email",
