@@ -25,7 +25,7 @@ const server = http.createServer(app); // ✅ Use HTTP server for socket.io
 // Setup Socket.IO server
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173", // ✅ Allow frontend to connect
+    origin: "*", // ✅ Allow frontend to connect
     methods: ["GET", "POST"],
   },
 });
@@ -38,7 +38,10 @@ app.use((req, res, next) => {
 
 // Middleware
 app.use(express.json());
-app.use(cors({ origin: "http://localhost:5173", credentials: true }));
+app.use(cors({
+  origin: "*", 
+}));
+
 app.use("/uploads", express.static("uploads"));
 
 // Routes
