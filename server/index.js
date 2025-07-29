@@ -31,10 +31,12 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 const io = new Server(server, {
   cors: {
-    origin: "*", 
+    origin: "https://vidya-setu-frontend-ruddy.vercel.app",
     methods: ["GET", "POST"],
+    credentials: true,
   },
 });
+
 
 app.use((req, res, next) => {
   req.io = io;
@@ -44,10 +46,11 @@ app.use((req, res, next) => {
 // Middleware
 app.use(express.json());
 app.use(cors({
-  origin: "*", 
+  origin: "https://vidya-setu-frontend-ruddy.vercel.app",
+  credentials: true,
 }));
 
-app.use("/uploads", express.static("uploads"));
+
 
 // Routes
 app.use("/api", userRoute);
