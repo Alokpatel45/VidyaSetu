@@ -1,0 +1,94 @@
+.auth-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 90vh;
+  background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+  font-family: "Poppins", sans-serif;
+  animation: pageFade 0.6s ease-in-out;
+
+  .auth-form {
+    background: linear-gradient(135deg, #fff, #f5f5f5);
+    padding: 40px 30px;
+    border-radius: 16px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    width: 340px;
+    text-align: center;
+    transform: scale(1);
+    transition: transform 0.4s ease;
+
+    &:hover {
+      transform: scale(1.02);
+    }
+
+    h2 {
+      font-size: 28px;
+      background: linear-gradient(to right, #ffe600, #d2f603);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-weight: 700;
+      margin-bottom: 20px;
+      letter-spacing: 1px;
+    }
+
+    form {
+      text-align: left;
+
+      label {
+        font-size: 14px;
+        font-weight: 500;
+        color: #444;
+        margin-bottom: 6px;
+        display: block;
+      }
+
+      input {
+        width: 100%;
+        padding: 12px 14px;
+        margin-bottom: 18px;
+        border: 2px solid #eee;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: all 0.3s ease-in-out;
+        background: #fff;
+
+        &:focus {
+          border-color: #d2f603;
+          box-shadow: 0 0 10px rgba(210, 246, 3, 0.6);
+          outline: none;
+        }
+      }
+
+      button {
+        width: 100%;
+        padding: 12px;
+        background: linear-gradient(to right, #d2f603, #ffee00);
+        border: none;
+        border-radius: 8px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        color: #333;
+        box-shadow: 0 6px 15px rgba(210, 246, 3, 0.4);
+        transition: all 0.3s ease-in-out;
+
+        &:hover {
+          background: linear-gradient(to right, #ffee00, #d2f603);
+          transform: translateY(-2px);
+          box-shadow: 0 10px 20px rgba(210, 246, 3, 0.5);
+        }
+      }
+    }
+  }
+}
+
+@keyframes pageFade {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -1,0 +1,35 @@
+.main-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 40px 20px;
+  background: linear-gradient(135deg, #f9f9f9, #eef3da);
+
+  .box {
+    background: linear-gradient(135deg, #d2f603, #b0cb00);
+    padding: 15px 25px;
+    border-radius: 12px;
+    text-align: center;
+    color: #1c1c1c;
+    font-weight: 600;
+    font-size: 16px;
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease-in-out;
+    cursor: pointer;
+    min-width: 120px;
+
+    &:hover {
+      background: linear-gradient(135deg, #829805, #cddc39);
+      transform: scale(1.05) rotate(-1deg);
+      color: #fff;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    &:active {
+      transform: scale(0.97);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+  }
+}

@@ -1,0 +1,92 @@
+.course-study-page {
+  padding: 60px 20px;
+  background: linear-gradient(135deg, #fefefe, #f0f4ff);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  font-family: "Poppins", sans-serif;
+  animation: fadeIn 0.6s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.course-study-page img {
+  width: 350px;
+  border-radius: 16px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  transition: transform 0.4s ease;
+  margin-bottom: 25px;
+}
+
+.course-study-page img:hover {
+  transform: scale(1.03);
+}
+
+.course-study-page h2 {
+  font-size: 34px;
+  font-weight: 700;
+  color: #e67e22;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  letter-spacing: 1px;
+}
+
+.course-study-page h4 {
+  font-size: 22px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 5px;
+}
+
+.course-study-page h5 {
+  font-size: 18px;
+  color: #7f8c8d;
+  margin: 2px 0;
+}
+
+.course-study-page a {
+  text-decoration: none;
+  background: linear-gradient(90deg, #ff6f61, #ffb347);
+  color: #fff;
+  padding: 12px 30px;
+  border-radius: 30px;
+  font-size: 16px;
+  font-weight: 600;
+  margin-top: 25px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(255, 111, 97, 0.3);
+}
+
+.course-study-page a:hover {
+  background: linear-gradient(90deg, #ffb347, #ff6f61);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(255, 111, 97, 0.4);
+}
+
+.course-study-page button.common-btn {
+  margin-top: 30px;
+  background-color: #8e44ad;
+  color: #fff;
+  border: none;
+  padding: 12px 25px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 30px;
+  cursor: pointer;
+  transition: background 0.3s ease, transform 0.2s ease;
+}
+
+.course-study-page button.common-btn:hover {
+  background-color: #732d91;
+  transform: scale(1.05);
+}

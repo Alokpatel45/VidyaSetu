@@ -1,0 +1,137 @@
+.lecture-page {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 40px 20px;
+  min-height: 80vh;
+  background-color: #f9f9f9;
+  font-family: "Poppins", sans-serif;
+}
+
+/* Responsive layout */
+@media (max-width: 786px) {
+  .lecture-page {
+    flex-direction: column;
+    align-items: center;
+  }
+}
+
+.lecture-page .left {
+  width: 70%;
+  padding: 20px;
+}
+
+@media (max-width: 786px) {
+  .lecture-page .left {
+    width: 100%;
+  }
+}
+
+.lecture-page .right {
+  width: 30%;
+}
+
+@media (max-width: 786px) {
+  .lecture-page .right {
+    width: 100%;
+    margin-top: 20px;
+  }
+}
+
+/* Lecture Form */
+.lecture-page .right .lecture-form {
+  background-color: #ffffff;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+  text-align: center;
+}
+
+.lecture-page .right .lecture-form h2 {
+  font-size: 26px;
+  color: #1e88e5;
+  margin-bottom: 20px;
+}
+
+.lecture-page .right .lecture-form form {
+  text-align: left;
+}
+
+.lecture-page .right .lecture-form label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  color: #333;
+}
+
+.lecture-page .right .lecture-form input {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  transition: border-color 0.3s ease;
+}
+
+.lecture-page .right .lecture-form input:focus {
+  border-color: #1e88e5;
+  outline: none;
+}
+
+/* Lecture Numbers */
+.lecture-page .right .lecture-number {
+  background-color: #ffffff;
+  padding: 12px;
+  border: 1px solid #ccc;
+  margin-top: 12px;
+  border-radius: 6px;
+  text-align: center;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.lecture-page .right .lecture-number:hover {
+  background-color: #1e88e5;
+  color: #fff;
+  border-color: #1e88e5;
+}
+
+.lecture-page .right .lecture-number.active {
+  background-color: #1e88e5;
+  color: #fff;
+  font-weight: 600;
+}
+
+.video-player-wrapper {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto 20px auto;
+  border-radius: 12px;
+  overflow: hidden;
+  background-color: #1e88e5;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  border: 3px solid #1e88e5;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+.video-player-wrapper video {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 0;
+  outline: none;
+}
+
+/* Responsive behavior */
+@media (max-width: 768px) {
+  .video-player-wrapper {
+    max-width: 100%;
+    margin-bottom: 16px;
+    border-radius: 8px;
+  }
+}

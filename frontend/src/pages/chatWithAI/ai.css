@@ -1,0 +1,86 @@
+/* Container */
+.ai-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem 1rem;
+  font-family: "Segoe UI", sans-serif;
+  background-color: #f5f7fb;
+  min-height: 100vh;
+}
+
+/* Input */
+.ai-container input[type="text"] {
+  width: 100%;
+  max-width: 400px;
+  padding: 12px 16px;
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.ai-container input[type="text"]:focus {
+  border-color: #007bff;
+}
+
+/* Ask Button */
+.common-btn {
+  padding: 12px 24px;
+  background-color: #007bff;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  margin-bottom: 20px;
+  transition: background-color 0.2s;
+}
+
+.common-btn:hover {
+  background-color: #0056b3;
+}
+
+/* Chat container */
+.qa-container {
+  width: 100%;
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Common chat bubble */
+.qa-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* User message: aligned right */
+.user-msg {
+  align-self: flex-end;
+  background-color: #d1e7ff;
+  color: #003366;
+  padding: 12px 16px;
+  border-radius: 16px 16px 0 16px;
+  max-width: 70%;
+  text-align: right;
+  font-weight: bold;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* AI message: aligned left */
+.ai-msg {
+  align-self: flex-start;
+  background-color: #ffffff;
+  color: #222;
+  padding: 12px 16px;
+  border-radius: 16px 16px 16px 0;
+  max-width: 70%;
+  text-align: left;
+  border: 1px solid #eee;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+}
