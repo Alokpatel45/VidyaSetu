@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import api from "../../utils/api";
-import "./Ai.css";
+import "./ai.css";
 
 const Ai = () => {
   const [isLoading, setIsLoading] = useState(false);
