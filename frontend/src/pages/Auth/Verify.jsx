@@ -16,9 +16,11 @@ const Verify = () => {
       <div className="auth-form">
         <h2>Verify Account</h2>
         <form action="" onSubmit={submitHandler}>
-          <label htmlFor="otp"></label>
+          <label htmlFor="otp">OTP</label>
           <input
-            type="number"
+            type="text"
+            inputMode="numeric"
+            maxLength={6}
             required
             value={otp}
             onChange={(e) => setOtp(e.target.value)}

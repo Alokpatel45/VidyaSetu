@@ -1,22 +1,37 @@
-// src/contexts/SocketContext.jsx
-import { createContext, useContext, useEffect, useRef } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { io } from "socket.io-client";
+import { SOCKET_URL } from "../config";
+import { UserData } from "./UserContext.jsx";
+
 const SocketContext = createContext();
 export const useSocket = () => useContext(SocketContext);
 
 export const SocketProvider = ({ children }) => {
-  const socketRef = useRef(null);
+  const { accessToken, isAuth } = UserData();
+  const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    socketRef.current = io("http://localhost:5000");
-    return () => {
-      socketRef.current.disconnect();
-    };
-  }, []);
+    if (!isAuth || !accessToken) {
+      if (socket) {
+        socket.disconnect();
+        setSocket(null);
+      }
+      return;
+    }
 
-  return (
-    <SocketContext.Provider value={socketRef.current}>
-      {children}
-    </SocketContext.Provider>
-  );
+    const socketInstance = io(SOCKET_URL, {
+      withCredentials: true,
+      auth: {
+        token: accessToken,
+      },
+    });
+
+    setSocket(socketInstance);
+
+    return () => {
+      socketInstance.disconnect();
+    };
+  }, [accessToken, isAuth]);
+
+  return <SocketContext.Provider value={socket}>{children}</SocketContext.Provider>;
 };

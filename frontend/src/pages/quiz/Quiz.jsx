@@ -1,111 +1,162 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
-import { server } from "../../main";
-import { CourseData } from "../../context/CourseContext";
+import toast from "react-hot-toast";
+import api from "../../utils/api";
+import { CourseData } from "../../context/CourseContext.jsx";
 import "./quiz.css";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
+
+const DEFAULT_QUIZ_SIZE = 10;
+
 const Quiz = () => {
-  const [subject, setSubject] = useState("");
   const [questions, setQuestions] = useState([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOps, setSelectedOps] = useState({});
-  const [checkClicked, setCheckClicked] = useState({});
-  const [score, setScore] = useState(null);
+  const [showResult, setShowResult] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [quizStarted, setQuizStarted] = useState(false);
 
   const { fetchCourse, course } = CourseData();
   const { id } = useParams();
+  const navigate = useNavigate();
+
   useEffect(() => {
-    fetchCourse(id);
-  }, []);
-  const handleQuiz = async () => {
+    if (id) fetchCourse(id);
+  }, [id, fetchCourse]);
+
+  const startQuiz = async () => {
+    const topic = course?.title?.trim();
+    if (!topic) {
+      toast.error("Loading course details...");
+      return;
+    }
+
     setIsLoading(true);
-    const selectedSubject = course.title;
-    console.log(selectedSubject);
     try {
-      const res = await axios.post(`${server}/gemini/quiz`, {
-        subject: selectedSubject,
+      const { data } = await api.post("/gemini/quiz", {
+        topic,
+        numQuestions: DEFAULT_QUIZ_SIZE,
+        difficulty: "medium",
       });
-      setQuestions(res.data.quiz);
+      setQuestions(Array.isArray(data.quiz) ? data.quiz : []);
       setSelectedOps({});
-      setCheckClicked({});
-      setScore(null);
+      setCurrentIndex(0);
+      setShowResult(false);
+      setQuizStarted(true);
     } catch (err) {
-      console.error(err);
+      toast.error(err.response?.data?.message || "Failed to generate quiz");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const checkAnswer = (id) => {
-    const userAnswer = selectedOps[id];
-    if (!userAnswer) return;
-
-    const isCorrect = userAnswer === questions[id].correctAnswer;
-
-    setCheckClicked((prev) => ({
+  const handleOptionSelect = (option) => {
+    setSelectedOps((prev) => ({
       ...prev,
-      [id]: isCorrect,
+      [currentIndex]: option,
     }));
+  };
 
-    const allAnswered = questions.every((_, idx) => {
-      const selected = selectedOps[idx];
-      return selected && selected === questions[idx].correctAnswer;
-    });
-
-    if (allAnswered) {
-      const correctCount = questions.reduce((acc, q, i) => {
-        return selectedOps[i] === q.correctAnswer ? acc + 1 : acc;
-      }, 0);
-      setScore(correctCount);
+  const nextQuestion = () => {
+    if (currentIndex < questions.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+    } else {
+      setShowResult(true);
     }
   };
 
-  return (
-    <div className="quiz-container">
-      <h1>Quiz</h1>
-      <button className="common-btn" onClick={handleQuiz}>
-        {isLoading ? "Loading..." : "Start Quiz"}
-      </button>
+  const calculateScore = () => {
+    return questions.reduce((acc, q, i) => {
+      return selectedOps[i] === q.correctAnswer ? acc + 1 : acc;
+    }, 0);
+  };
 
-      <div className="quiz">
-        {questions.map((q, id) => (
-          <div key={id} className="question-box">
-            <h2>{q.question}</h2>
-            <ol type="1">
-              {q.options.map((opt, i) => (
-                <li key={i}>
-                  <label>
-                    <input
-                      type="radio"
-                      name={`question-${id}`}
-                      value={opt}
-                      checked={selectedOps[id] === opt}
-                      onChange={() =>
-                        setSelectedOps((prev) => ({ ...prev, [id]: opt }))
-                      }
-                    />
-                    {opt}
-                  </label>
-                </li>
-              ))}
-            </ol>
-            <button onClick={() => checkAnswer(id)} className="common-btn">
-              Check
-            </button>
-            {checkClicked[id] !== undefined && (
-              <p className={checkClicked[id] ? "correct" : "incorrect"}>
-                {checkClicked[id] ? "Correct ✅" : "Try Again ❌"}
-              </p>
-            )}
+  if (!quizStarted) {
+    return (
+      <div className="quiz-welcome-wrapper">
+        <div className="quiz-intro-card">
+          <div className="quiz-icon">🎯</div>
+          <h1>{course?.title} Quiz</h1>
+          <p>Test your knowledge with 10 AI-generated questions based on this course.</p>
+          <div className="quiz-rules">
+            <span>✓ 10 Questions</span>
+            <span>✓ Multiple Choice</span>
+            <span>✓ Instant Result</span>
           </div>
-        ))}
+          <button className="start-quiz-btn" onClick={startQuiz} disabled={isLoading}>
+            {isLoading ? "Generating Quiz..." : "Begin Now"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (showResult) {
+    const finalScore = calculateScore();
+    const percentage = (finalScore / questions.length) * 100;
+    
+    return (
+      <div className="quiz-result-wrapper">
+        <div className="result-card">
+          <div className="result-header">
+            {percentage >= 70 ? "🎉 Amazing!" : percentage >= 40 ? "👍 Good Job!" : "📚 Keep Learning!"}
+          </div>
+          <div className="score-circle">
+            <span className="score-num">{finalScore}</span>
+            <span className="score-total">/ {questions.length}</span>
+          </div>
+          <h2>Quiz Completed</h2>
+          <p>You scored {percentage}% in the {course?.title} assessment.</p>
+          
+          <div className="result-actions">
+            <button className="retry-btn" onClick={startQuiz}>Try Again</button>
+            <button className="back-btn" onClick={() => navigate(`/course/study/${id}`)}>Back to Course</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const currentQ = questions[currentIndex];
+
+  return (
+    <div className="quiz-active-wrapper">
+      <div className="quiz-progress-bar">
+        <div 
+          className="progress-fill" 
+          style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
+        ></div>
       </div>
 
-      {score !== null && (
-        <div className="score">
-          🎉 Final Score: {score} / {questions.length}
+      <div className="question-card">
+        <div className="question-header">
+          <span className="q-count">Question {currentIndex + 1} of {questions.length}</span>
         </div>
-      )}
+
+        <h2 className="question-text">{currentQ?.question}</h2>
+
+        <div className="options-grid">
+          {currentQ?.options.map((opt, i) => (
+            <div 
+              key={i} 
+              className={`option-item ${selectedOps[currentIndex] === opt ? 'selected' : ''}`}
+              onClick={() => handleOptionSelect(opt)}
+            >
+              <div className="option-letter">{String.fromCharCode(65 + i)}</div>
+              <div className="option-content">{opt}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="quiz-footer">
+          <button 
+            className="next-btn" 
+            onClick={nextQuestion} 
+            disabled={!selectedOps[currentIndex]}
+          >
+            {currentIndex === questions.length - 1 ? "Finish Quiz" : "Next Question"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

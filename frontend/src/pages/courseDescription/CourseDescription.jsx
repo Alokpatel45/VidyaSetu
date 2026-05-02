@@ -3,8 +3,9 @@ import React, { useEffect, useState } from "react";
 import "./courseDescription.css";
 import { useNavigate, useParams } from "react-router-dom";
 import { CourseData } from "../../context/CourseContext";
-import { server } from "../../main";
-import axios from "axios";
+import { resolveMediaUrl } from "../../utils/mediaUrl";
+import { subscriptionIncludes } from "../../utils/subscription";
+import api from "../../utils/api";
 import toast from "react-hot-toast";
 import { UserData } from "../../context/UserContext";
 import Loading from "../../components/loding/Loading";
@@ -17,63 +18,57 @@ const CourseDescription = ({ user }) => {
   const { fetchCourse, course, fetchCourses, fetchMyCourse } = CourseData();
   useEffect(() => {
     fetchCourse(params.id);
-  }, []);
+  }, [params.id, fetchCourse]);
 
   const checkOutHandler = async () => {
-    const token = localStorage.getItem("token");
     setLoading(true);
-    const {
-      data: { order },
-    } = await axios.post(
-      `${server}/api/course/checkout/${params.id}`,
-      {},
-      {
-        headers: {
-          token,
+    try {
+      const {
+        data: { order, key },
+      } = await api.post(`/api/course/checkout/${params.id}`, {});
+
+      const options = {
+        key, // Use the key returned from the backend response
+        amount: order.amount, // Correct field
+        currency: order.currency,
+        name: "VidyaSetu",
+        description: `Purchase ${course.title}`,
+        order_id: order.id,
+        prefill: {
+          name: user.name,
+          email: user.email,
         },
-      }
-    );
-    const options = {
-      key: "rzp_test_mgSPvqcEqRuSAe", // Enter the Key ID generated from the Dashboard
-      amount: order.id, // Amount is in currency subunits. Default currency is INR. Hence, 50000 refers to 50000 paise
-      currency: "INR",
-      name: "E Learning", //your business name
-      description: "Thank you for chosing ELearning",
-      order_id: order.id, //This is a sample Order ID. Pass the `id` obtained in the response of Step 1
-      handler: async function (response) {
-        const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
-          response;
-        try {
-          const { data } = await axios.post(
-            `${server}/api/verification/${params.id}`,
-            {
+        handler: async function (response) {
+          const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
+            response;
+          try {
+            const { data } = await api.post(`/api/verification/${params.id}`, {
               razorpay_order_id,
               razorpay_payment_id,
               razorpay_signature,
-            },
-            {
-              headers: {
-                token,
-              },
-            }
-          );
-          await fetchUser();
-          await fetchCourses();
-          await fetchMyCourse();
-          toast.success(data.message);
-          setLoading(false);
-          navigate(`/payment-success/${razorpay_payment_id}`);
-        } catch (error) {
-          toast.error(error.response.data.message);
-          setLoading(false);
-        }
-      },
-      theme: {
-        color: "rgb(210, 246, 3)",
-      },
-    };
-    const razorpay = new window.Razorpay(options);
-    razorpay.open();
+            });
+            await fetchUser();
+            await fetchCourses();
+            await fetchMyCourse();
+            toast.success(data.message);
+            setLoading(false);
+            navigate(`/payment-success/${razorpay_payment_id}`);
+          } catch (error) {
+            toast.error(error.response?.data?.message || "Payment failed");
+            setLoading(false);
+          }
+        },
+        theme: {
+          color: "rgb(210, 246, 3)",
+        },
+      };
+
+      const razorpay = new window.Razorpay(options);
+      razorpay.open();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Could not start checkout");
+      setLoading(false);
+    }
   };
 
   return (
@@ -86,7 +81,7 @@ const CourseDescription = ({ user }) => {
             <div className="course-description">
               <div className="course-header">
                 <img
-                  src={`${server}/${course.image}`}
+                  src={resolveMediaUrl(course.image)}
                   alt=""
                   className="course-image"
                 />
@@ -98,7 +93,7 @@ const CourseDescription = ({ user }) => {
               </div>
               <p>{course.description}</p>
               <p>Let's get started with this course At ₹{course.price}</p>
-              {user && user.subscription.includes(course._id) ? (
+              {user && subscriptionIncludes(user.subscription, course._id) ? (
                 <button
                   className="common-btn"
                   onClick={() => navigate(`/course/study/${course._id}`)}

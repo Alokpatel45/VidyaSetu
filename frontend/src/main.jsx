@@ -5,8 +5,6 @@ import { UserContextProvider } from "./context/UserContext.jsx";
 import { CourseContextProvider } from "./context/CourseContext.jsx";
 import { SocketProvider } from "./context/SocketContext.jsx";
 
-export const server = "https://vidyasetu.onrender.com";
-
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <UserContextProvider>

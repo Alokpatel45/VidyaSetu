@@ -1,9 +1,11 @@
-import axios from "axios";
+import tryCatch from "../middlewares/tryCatch.js";
+import { generateAiText } from "../services/aiService.js";
 
-const aiQuiz = async (req, res) => {
-  const subject = req.body.subject;
+const aiQuiz = tryCatch(async (req, res) => {
+  const { topic, numQuestions, difficulty } = req.body;
+
   const prompt = `
-Generate a quiz of 10 multiple-choice questions on the subject "${subject}".
+Generate ${numQuestions} multiple-choice questions on the subject "${topic}" at ${difficulty} difficulty level.
 
 Each question should be a JSON object with:
 - "question": string
@@ -15,41 +17,35 @@ Do NOT include any explanation, markdown (like \`\`\`json), or additional text.
 Ensure the questions are different on each request.
 `;
 
-  try {
-    const response = await axios.post(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
-      {
-        contents: [
-          {
-            role: "user",
-            parts: [
-              {
-                text: prompt,
-              },
-            ],
-          },
-        ],
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "X-goog-api-key": process.env.GEMINI_API,
-        },
-      }
-    );
-
-    let reply =
-      response.data?.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
-
-    reply = reply.replace(/```json|```/g, "").trim();
-
-    const quizArray = JSON.parse(reply);
-
-    res.json({ quiz: quizArray });
-  } catch (error) {
-    console.error("Gemini error:", error.response?.data || error.message);
-    res.status(500).json({ error: "Error fetching from Gemini API" });
+  const raw = await generateAiText(prompt);
+  if (!raw) {
+    return res.status(500).json({ error: "No response from AI" });
   }
-};
+
+  // Robust JSON extraction: look for the first [ and last ]
+  let jsonString = raw;
+  const startIdx = raw.indexOf("[");
+  const endIdx = raw.lastIndexOf("]");
+  
+  if (startIdx !== -1 && endIdx !== -1) {
+    jsonString = raw.substring(startIdx, endIdx + 1);
+  } else {
+    // If no brackets found, try cleaning markdown as a fallback
+    jsonString = raw.replace(/```json|```/g, "").trim();
+  }
+
+  let quizArray;
+  try {
+    quizArray = JSON.parse(jsonString);
+  } catch (parseError) {
+    console.error("JSON parse error:", parseError.message, "Raw:", raw);
+    return res.status(500).json({
+      error: "Failed to parse quiz response from AI",
+      details: "The AI did not return a valid JSON array.",
+    });
+  }
+
+  res.json({ quiz: quizArray });
+});
 
 export default aiQuiz;

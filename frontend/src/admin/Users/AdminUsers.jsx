@@ -1,10 +1,7 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import "./users.css";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
-import axios from "axios";
-import { server } from "../../main";
-import { useEffect } from "react";
+import api from "../../utils/api";
 import Layout from "../Utils/Layout";
 import toast from "react-hot-toast";
 const AdminUsers = ({ user }) => {
@@ -15,32 +12,22 @@ const AdminUsers = ({ user }) => {
   const [users, setUsers] = useState([]);
   async function fetchUsers() {
     try {
-      const { data } = await axios.get(`${server}/api/users`, {
-        headers: {
-          token: localStorage.getItem("token"),
-        },
-      });
+      const { data } = await api.get("/api/users");
       setUsers(data.users);
     } catch (error) {
-      console.group(error);
+      console.error(error);
     }
   }
-  const updateRole = async (id) => {
+  const updateRole = async (id, currentRole) => {
     if (confirm("Are you sure you want to update user role")) {
       try {
-        const { data } = await axios.put(
-          `${server}/api/user/${id}`,
-          {},
-          {
-            headers: {
-              token: localStorage.getItem("token"),
-            },
-          }
-        );
+        const { data } = await api.put(`/api/user/${id}`, {
+          role: currentRole === "admin" ? "user" : "admin",
+        });
         toast.success(data.message);
         fetchUsers();
       } catch (error) {
-        toast.error(error);
+        toast.error(error.response?.data?.message || "Failed to update role");
       }
     }
   };
@@ -61,25 +48,24 @@ const AdminUsers = ({ user }) => {
               <td>update role</td>
             </tr>
           </thead>
-          {users &&
-            users.map((e, i) => (
-              <tbody>
-                <tr>
-                  <td>{i + 1}</td>
-                  <td>{e.name}</td>
-                  <td>{e.email}</td>
-                  <td>{e.role}</td>
-                  <td>
-                    <button
-                      onClick={() => updateRole(e._id)}
-                      className="common-btn"
-                    >
-                      Update Role
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
+          <tbody>
+            {users.map((e, i) => (
+              <tr key={e._id}>
+                <td>{i + 1}</td>
+                <td>{e.name}</td>
+                <td>{e.email}</td>
+                <td>{e.role}</td>
+                <td>
+                  <button
+                    onClick={() => updateRole(e._id, e.role)}
+                    className="common-btn"
+                  >
+                    Update Role
+                  </button>
+                </td>
+              </tr>
             ))}
+          </tbody>
         </table>
       </div>
     </Layout>

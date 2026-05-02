@@ -1,46 +1,58 @@
-import axios from "axios";
-import { createContext, useContext, useEffect, useState } from "react";
-import { server } from "../main";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import api from "../utils/api";
+import { UserData } from "./UserContext.jsx";
+
 const CourseContext = createContext();
+
 export const CourseContextProvider = ({ children }) => {
+  const { isAuth, loading: userLoading } = UserData();
   const [courses, setCourses] = useState([]);
-  const [course, setCourse] = useState([]);
+  const [course, setCourse] = useState(null);
   const [myCourse, setMyCourse] = useState([]);
-  async function fetchCourses() {
+
+  const fetchCourses = useCallback(async () => {
     try {
-      const { data } = await axios.get(`${server}/api/course/all`);
+      const { data } = await api.get("/api/course/all");
       setCourses(data.courses);
     } catch (error) {
-      console.log(error);
+      console.error(error);
     }
-  }
+  }, []);
 
-  async function fetchCourse(id) {
+  const fetchCourse = useCallback(async (id) => {
     try {
-      const { data } = await axios.get(`${server}/api/course/${id}`);
-      setCourse(data.course);
+      const { data } = await api.get(`/api/course/${id}`);
+      setCourse(data.course ?? null);
     } catch (error) {
-      console.log(error);
+      console.error(error);
+      setCourse(null);
     }
-  }
+  }, []);
 
-  async function fetchMyCourse(params) {
+  const fetchMyCourse = useCallback(async () => {
     try {
-      const { data } = await axios.get(`${server}/api/mycourse`, {
-        headers: {
-          token: localStorage.getItem("token"),
-        },
-      });
+      const { data } = await api.get("/api/mycourse");
       setMyCourse(data.courses);
     } catch (error) {
-      console.log(error);
+      if (error.response?.status && error.response.status !== 401) {
+        console.error(error);
+      }
+      setMyCourse([]);
     }
-  }
+  }, []);
 
   useEffect(() => {
     fetchCourses();
+  }, [fetchCourses]);
+
+  useEffect(() => {
+    if (userLoading) return;
+    if (!isAuth) {
+      setMyCourse([]);
+      return;
+    }
     fetchMyCourse();
-  }, []);
+  }, [userLoading, isAuth, fetchMyCourse]);
 
   return (
     <CourseContext.Provider

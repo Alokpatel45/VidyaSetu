@@ -1,21 +1,19 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "../Utils/Layout";
-import axios from "axios";
-import { server } from "../../main";
-
+import api from "../../utils/api";
 import "./admindashborad.css";
 
 const AdminDashboard = ({ user }) => {
   const navigate = useNavigate();
-  const [stats, setStats] = useState("");
+  const [stats, setStats] = useState({
+    totalCourses: 0,
+    totalLectures: 0,
+    totalUsers: 0,
+  });
   async function fetchStats() {
     try {
-      const { data } = await axios.get(`${server}/api/stats`, {
-        headers: {
-          token: localStorage.getItem("token"),
-        },
-      });
+      const { data } = await api.get("/api/stats");
       setStats(data.stats);
     } catch (error) {
       console.log(error);

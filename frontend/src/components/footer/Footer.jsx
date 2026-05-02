@@ -6,7 +6,7 @@ const Footer = () => {
     <footer>
       <div className="footer-content">
         <p>
-          &copy; 2024 Your E-learning Platform. All rights reserved. <br />
+          &copy; {new Date().getFullYear()} VidyaSetu. All rights reserved. <br />
           Made with ❤️ by
           <a
             href="https://github.com/alokpatel45"

@@ -1,10 +1,14 @@
-import { instance } from "../index.js";
 import tryCatch from "../middlewares/tryCatch.js";
+import { getRazorpay } from "../config/razorpay.js";
 import { Courses } from "../models/Courses.js";
 import { Lecture } from "../models/lecture.js";
 import { Payment } from "../models/payment.js";
 import { User } from "../models/user.js";
 import crypto from "crypto";
+
+const isSubscribed = (user, courseId) =>
+  Array.isArray(user.subscription) &&
+  user.subscription.some((id) => String(id) === String(courseId));
 
 export const getAllCourses = tryCatch(async (req, res) => {
   const courses = await Courses.find();
@@ -15,6 +19,9 @@ export const getAllCourses = tryCatch(async (req, res) => {
 
 export const getSingleCourse = tryCatch(async (req, res) => {
   const course = await Courses.findById(req.params.id);
+  if (!course) {
+    return res.status(404).json({ message: "Course not found" });
+  }
   res.status(200).json({
     course,
   });
@@ -23,35 +30,30 @@ export const getSingleCourse = tryCatch(async (req, res) => {
 export const getAllLectures = tryCatch(async (req, res) => {
   const lectures = await Lecture.find({ course: req.params.id });
   const user = await User.findById(req.user._id);
-  if (user.role == "admin") {
-    return res.status(200).json({
-      lectures,
-    });
+
+  if (user.role === "admin" || isSubscribed(user, req.params.id)) {
+    return res.status(200).json({ lectures });
   }
-  if (!user.subscription.includes(req.params.id)) {
-    return res.status(400).json({
-      message: "You are not subscribed to this course",
-    });
-  }
-  res.status(200).json({
-    lectures,
+
+  return res.status(403).json({
+    message: "You are not subscribed to this course",
   });
 });
+
 export const fetchLecture = tryCatch(async (req, res) => {
   const lecture = await Lecture.findById(req.params.id);
+  if (!lecture) {
+    return res.status(404).json({ message: "Lecture not found" });
+  }
+
   const user = await User.findById(req.user._id);
-  if (user.role == "admin") {
-    return res.status(200).json({
-      lecture,
-    });
+
+  if (user.role === "admin" || isSubscribed(user, lecture.course)) {
+    return res.status(200).json({ lecture });
   }
-  if (!user.subscription.includes(lecture.course)) {
-    return res.status(400).json({
-      message: "You are not subscribed to this course",
-    });
-  }
-  res.status(200).json({
-    lecture,
+
+  return res.status(403).json({
+    message: "You are not subscribed to this course",
   });
 });
 
@@ -66,19 +68,34 @@ export const checkout = tryCatch(async (req, res) => {
   const user = await User.findById(req.user._id);
   const course = await Courses.findById(req.params.id);
 
-  if (user.subscription.includes(course._id)) {
+  if (!course) {
+    return res.status(404).json({ message: "Course not found" });
+  }
+
+  if (isSubscribed(user, course._id)) {
     return res.status(400).json({
-      messege: "you have already have this course",
+      message: "You already own this course",
     });
   }
   const options = {
     amount: Number(course.price * 100),
     currency: "INR",
   };
-  const order = await instance.orders.create(options);
+  let order;
+  try {
+    order = await getRazorpay().orders.create(options);
+  } catch (error) {
+    console.error("Razorpay Order Error:", error);
+    return res.status(502).json({
+      message: "Failed to create payment order. Please check Razorpay API keys.",
+      error: error.description || error.message
+    });
+  }
+
   res.status(201).json({
     course,
     order,
+    key: process.env.Razorpay_Key,
   });
 });
 
@@ -99,14 +116,22 @@ export const paymentVerification = tryCatch(async (req, res) => {
     });
     const user = await User.findById(req.user._id);
     const course = await Courses.findById(req.params.id);
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+    if (isSubscribed(user, course._id)) {
+      return res.status(200).json({
+        message: "Course already activated",
+      });
+    }
     user.subscription.push(course._id);
     await user.save();
     res.status(200).json({
-      messege: "course purchase successfull",
+      message: "Course purchased successfully",
     });
   } else {
     return res.status(400).json({
-      message: "Payement Failed",
+      message: "Payment failed",
     });
   }
 });

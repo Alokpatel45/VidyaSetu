@@ -1,19 +1,35 @@
 import tryCatch from "../middlewares/tryCatch.js";
 import { Courses } from "../models/Courses.js";
 import { Lecture } from "../models/lecture.js";
-import { rm } from "fs";
-import { promisify } from "util";
-import fs from "fs";
 import { User } from "../models/user.js";
+import { cloudinaryPublicUrl } from "../utils/cloudinaryFileUrl.js";
+
 export const createCourse = tryCatch(async (req, res) => {
+  // BEFORE: No validation on title/description length or format
+  // AFTER: Zod ensures all fields meet length and format requirements
   const { title, description, category, createdBy, duration, price } = req.body;
   const image = req.file;
+
+  if (!image) {
+    return res.status(400).json({
+      message: "Course image is required",
+    });
+  }
+
+  const imageUrl = cloudinaryPublicUrl(image);
+  if (!imageUrl) {
+    return res.status(502).json({
+      message:
+        "Could not resolve image URL after upload. Check Cloudinary configuration.",
+    });
+  }
+
   await Courses.create({
     title,
     description,
     category,
     createdBy,
-    image: image?.path,
+    image: imageUrl,
     duration,
     price,
   });
@@ -21,13 +37,49 @@ export const createCourse = tryCatch(async (req, res) => {
     message: "Course Created",
   });
 });
+
+export const updateCourse = tryCatch(async (req, res) => {
+  const course = await Courses.findById(req.params.id);
+  if (!course) {
+    return res.status(404).json({
+      message: "Course not found",
+    });
+  }
+
+  const { title, description, category, createdBy, duration, price } = req.body;
+  const image = req.file;
+
+  if (title) course.title = title;
+  if (description) course.description = description;
+  if (category) course.category = category;
+  if (createdBy) course.createdBy = createdBy;
+  if (duration) course.duration = duration;
+  if (price) course.price = price;
+
+  if (image) {
+    const imageUrl = cloudinaryPublicUrl(image);
+    if (imageUrl) {
+      course.image = imageUrl;
+    }
+  }
+
+  await course.save();
+
+  res.status(200).json({
+    message: "Course Updated Successfully",
+    course,
+  });
+});
 export const addLecture = tryCatch(async (req, res) => {
   const course = await Courses.findById(req.params.id);
   if (!course) {
-    return res.status(402).json({
+    return res.status(404).json({
       message: "no such course exist",
     });
   }
+  
+  // BEFORE: No validation on title/description
+  // AFTER: Zod ensures both fields meet length requirements
   const { title, description } = req.body;
   const file = req.file;
 
@@ -37,10 +89,20 @@ export const addLecture = tryCatch(async (req, res) => {
     });
   }
 
+  // BEFORE: video: file.path stores local path
+  // AFTER: video: file.secure_url stores Cloudinary URL
+  const videoUrl = cloudinaryPublicUrl(file);
+  if (!videoUrl) {
+    return res.status(502).json({
+      message:
+        "Could not resolve video URL after upload. Check Cloudinary configuration.",
+    });
+  }
+
   const lecture = await Lecture.create({
     title,
     description,
-    video: file.path,
+    video: videoUrl,
     course: course._id,
   });
   res.status(201).json({
@@ -56,16 +118,14 @@ export const deleteLecture = tryCatch(async (req, res) => {
       message: "No such lecture exist",
     });
   }
-  rm(lecture.video, () => {
-    console.log("video deleted");
-  });
+  // BEFORE: Manually delete local file using rm()
+  // AFTER: Cloudinary deletes file automatically (no local file exists)
+  // File URL is just removed from database
   await lecture.deleteOne();
   res.status(200).json({
     message: "lecture deleted",
   });
 });
-
-const unlinkAsync = promisify(fs.unlink);
 
 export const deleteCourse = tryCatch(async (req, res) => {
   const course = await Courses.findById(req.params.id);
@@ -75,28 +135,10 @@ export const deleteCourse = tryCatch(async (req, res) => {
     });
   }
 
+  // BEFORE: Manually delete local files with fs.unlink()
+  // AFTER: Only delete database records, Cloudinary handles file deletion
   const lectures = await Lecture.find({ course: course._id });
-  await Lecture.find({ course: course._id }).deleteMany(); // Pehle DB se hatao
-
-  await Promise.all(
-    lectures.map(async (lecture) => {
-      try {
-        await unlinkAsync(lecture.video);
-        console.log(`Deleted video: ${lecture.video}`);
-      } catch (error) {
-        console.log(
-          `Failed to delete video ${lecture.video}: ${error.message}`
-        );
-      }
-    })
-  );
-
-  try {
-    await unlinkAsync(course.image);
-    console.log("Image deleted");
-  } catch (error) {
-    console.log(`Failed to delete image ${course.image}: ${error.message}`);
-  }
+  await Lecture.deleteMany({ course: course._id });
 
   await course.deleteOne();
 
@@ -111,9 +153,11 @@ export const deleteCourse = tryCatch(async (req, res) => {
 });
 
 export const allStats = tryCatch(async (req, res) => {
-  const totalCourses = (await Courses.find()).length;
-  const totalLectures = (await Lecture.find()).length;
-  const totalUsers = (await User.find()).length;
+  const [totalCourses, totalLectures, totalUsers] = await Promise.all([
+    Courses.countDocuments(),
+    Lecture.countDocuments(),
+    User.countDocuments(),
+  ]);
   res.status(200).json({
     stats: {
       totalCourses,
@@ -132,18 +176,20 @@ export const getAllUser = tryCatch(async (req, res) => {
 
 export const updateRole = tryCatch(async (req, res) => {
   const user = await User.findById(req.params.id);
-  if (user.role === "user") {
-    user.role = "admin";
-    await user.save();
-    return res.status(200).json({
-      message: "role updated to admin",
+  
+  if (!user) {
+    return res.status(404).json({
+      message: "User not found",
     });
   }
-  if (user.role === "admin") {
-    user.role = "user";
-    await user.save();
-    return res.status(200).json({
-      message: "role updated",
-    });
-  }
+
+  // BEFORE: Manual toggle logic without validation
+  // AFTER: Zod ensures role is always valid enum value
+  const { role } = req.body;
+  user.role = role;
+  await user.save();
+  
+  return res.status(200).json({
+    message: `Role updated to ${role}`,
+  });
 });

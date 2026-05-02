@@ -5,7 +5,11 @@ const About = () => {
     <div className="about">
       <div className="about-content">
         <h2>About us</h2>
-        <p>This is your E-learnig plateform where you can study</p>
+        <p>
+          VidyaSetu is built for structured online learning: curated courses,
+          quizzes, AI support, and a community chat so learners stay on track—from
+          the first lesson to the last sprint.
+        </p>
       </div>
     </div>
   );

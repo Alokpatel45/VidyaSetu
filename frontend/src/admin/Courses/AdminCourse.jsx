@@ -5,8 +5,8 @@ import { CourseData } from "../../context/CourseContext";
 import CourseCard from "../../components/courseCard/CourseCard";
 import "./adminCourse.css";
 import toast from "react-hot-toast";
-import { server } from "../../main";
-import axios from "axios";
+import api from "../../utils/api";
+import { getApiErrorMessage } from "../../utils/apiErrorMessage";
 
 const AdminCourse = ({ user }) => {
   const navigate = useNavigate();
@@ -16,62 +16,135 @@ const AdminCourse = ({ user }) => {
   const [price, setPrice] = useState("");
   const [createdBy, setCreatedBy] = useState("");
   const [duration, setDuration] = useState("");
-  const [image, setImage] = useState("");
+  const [image, setImage] = useState(null);
   const [imagePrev, setImagePrev] = useState("");
   const [btnLoading, setBtnLoading] = useState(false);
+  
+  const [editMode, setEditMode] = useState(false);
+  const [editId, setEditId] = useState("");
+
   const categories = [
-    "Web Devwlopment",
+    "Web Development",
     "App Development",
     "DSA",
     "Artificial Intelligence",
     "Game Development",
     "Programming Language",
   ];
+
   if (user && user.role !== "admin") {
     return navigate("/");
   }
+
   const { courses, fetchCourses } = CourseData();
+
+  const handleEdit = (course) => {
+    setEditMode(true);
+    setEditId(course._id);
+    setTitle(course.title);
+    setDescription(course.description);
+    setCategory(course.category);
+    setPrice(course.price);
+    setCreatedBy(course.createdBy);
+    setDuration(course.duration);
+    setImagePrev(course.image);
+    // Note: image (the file) is left as null unless the user chooses a new one
+  };
+
+  const cancelEdit = () => {
+    setEditMode(false);
+    setEditId("");
+    setTitle("");
+    setCategory("");
+    setDescription("");
+    setDuration("");
+    setPrice("");
+    setImage(null);
+    setImagePrev("");
+    setCreatedBy("");
+  };
+
   const submitHandler = async (e) => {
     e.preventDefault();
+    const trimmedDesc = description.trim();
+    if (trimmedDesc.length < 10) {
+      toast.error("Description must be at least 10 characters.");
+      return;
+    }
+    if (!category.trim()) {
+      toast.error("Please choose a category.");
+      return;
+    }
+
+    // Only require image for NEW courses, optional for EDIT
+    if (!editMode && !(image instanceof Blob)) {
+      toast.error("Please choose a course thumbnail image.");
+      return;
+    }
+
     setBtnLoading(true);
     const myForm = new FormData();
-    myForm.append("title", title);
-    myForm.append("description", description);
-    myForm.append("category", category);
-    myForm.append("price", price);
-    myForm.append("createdBy", createdBy);
+    myForm.append("title", title.trim());
+    myForm.append("description", trimmedDesc);
+    myForm.append("category", category.trim());
+    myForm.append("price", String(price).trim());
+    myForm.append("createdBy", createdBy.trim());
     myForm.append("duration", duration);
-    myForm.append("file", image);
+
+    if (image instanceof Blob) {
+      myForm.append(
+        "file",
+        image,
+        image instanceof File && image.name ? image.name : "course-thumbnail.jpg"
+      );
+    }
+
     try {
-      const { data } = await axios.post(`${server}/api/course/new`, myForm, {
-        headers: {
-          token: localStorage.getItem("token"),
-        },
-      });
-      toast.success(data.message);
-      setBtnLoading(false);
+      if (editMode) {
+        const { data } = await api.put(`/api/course/${editId}`, myForm);
+        toast.success(data.message);
+      } else {
+        const { data } = await api.post("/api/course/new", myForm);
+        toast.success(data.message);
+      }
+
       await fetchCourses();
-      setTitle("");
-      setCategory("");
-      setDescription("");
-      setDuration("");
-      setPrice("");
-      setImage("");
-      setImagePrev("");
-      setCreatedBy("");
+      cancelEdit();
     } catch (error) {
-      toast.error(error);
+      toast.error(getApiErrorMessage(error, `Failed to ${editMode ? 'update' : 'create'} course`));
+    } finally {
+      setBtnLoading(false);
     }
   };
+
   const changeImageHandler = (e) => {
-    const file = e.target.files[0];
+    const input = e.target;
+    const file = input.files?.[0];
+
+    if (!file || !(file instanceof Blob)) {
+      setImage(null);
+      if (!editMode) setImagePrev(""); // Keep old preview in edit mode
+      if (input.files?.length) {
+        toast.error("Could not use that image. Choose a JPG, PNG, WebP, or GIF file.");
+      }
+      input.value = "";
+      return;
+    }
+
     const reader = new FileReader();
-    reader.readAsDataURL(file);
     reader.onloadend = () => {
-      setImagePrev(reader.result);
+      setImagePrev(typeof reader.result === "string" ? reader.result : "");
       setImage(file);
     };
+    reader.onerror = () => {
+      toast.error("Could not preview the image. Try another file.");
+      setImage(null);
+      if (!editMode) setImagePrev("");
+      input.value = "";
+    };
+    reader.readAsDataURL(file);
   };
+
   return (
     <Layout>
       <div className="admin-courses">
@@ -80,7 +153,7 @@ const AdminCourse = ({ user }) => {
           <div className="dashboard-content">
             {courses && courses.length > 0 ? (
               courses.map((e) => {
-                return <CourseCard key={e._id} course={e}></CourseCard>;
+                return <CourseCard key={e._id} course={e} onEdit={handleEdit}></CourseCard>;
               })
             ) : (
               <p>No courses</p>
@@ -90,20 +163,26 @@ const AdminCourse = ({ user }) => {
         <div className="right">
           <div className="add-course">
             <div className="course-form">
-              <h2>Add Course</h2>
+              <h2>{editMode ? "Edit Course" : "Add Course"}</h2>
               <form onSubmit={submitHandler}>
                 <label htmlFor="text">Title</label>
                 <input
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
+                  minLength={3}
+                  maxLength={100}
                   required
                 />
-                <label htmlFor="text">Description</label>
-                <input
-                  type="text"
+                <label htmlFor="course-description">Description</label>
+                <textarea
+                  id="course-description"
+                  rows={4}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Minimum 10 characters"
+                  minLength={10}
+                  maxLength={2000}
                   required
                 />
                 <label htmlFor="text">Price</label>
@@ -118,35 +197,68 @@ const AdminCourse = ({ user }) => {
                   type="text"
                   value={createdBy}
                   onChange={(e) => setCreatedBy(e.target.value)}
+                  placeholder="Min 2 characters"
+                  minLength={2}
+                  maxLength={100}
                   required
                 />
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
+                  required
                 >
-                  <option value={""}>Select Category</option>
+                  <option value="" disabled>
+                    Select category
+                  </option>
                   {categories.map((e) => (
                     <option value={e} key={e}>
                       {e}
                     </option>
                   ))}
                 </select>
-                <label htmlFor="text">Duration</label>
+                <label htmlFor="course-duration-weeks">
+                  Duration (weeks, number only)
+                </label>
                 <input
-                  type="text"
+                  id="course-duration-weeks"
+                  type="number"
+                  inputMode="decimal"
+                  step="any"
+                  min="0"
                   value={duration}
                   onChange={(e) => setDuration(e.target.value)}
                   required
                 />
-                <input type="file" onChange={changeImageHandler} required />
-                {imagePrev && <img src={imagePrev} width={300} />}
-                <button
-                  className="common-btn"
-                  disabled={btnLoading}
-                  type="submit"
-                >
-                  {btnLoading ? "Please wait" : "Add"}
-                </button>
+                <label htmlFor="course-thumbnail">Course thumbnail {editMode && "(Leave empty to keep current)"}</label>
+                <input
+                  id="course-thumbnail"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif"
+                  onChange={changeImageHandler}
+                  required={!editMode}
+                />
+                {imagePrev && <img src={imagePrev} width={300} alt="Course Preview" />}
+                
+                <div className="form-actions" style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                  <button
+                    className="common-btn"
+                    disabled={btnLoading}
+                    type="submit"
+                    style={{ flex: 1 }}
+                  >
+                    {btnLoading ? "Please wait" : (editMode ? "Update Course" : "Add Course")}
+                  </button>
+                  {editMode && (
+                    <button
+                      className="common-btn"
+                      type="button"
+                      onClick={cancelEdit}
+                      style={{ flex: 1, backgroundColor: '#95a5a6' }}
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
               </form>
             </div>
           </div>

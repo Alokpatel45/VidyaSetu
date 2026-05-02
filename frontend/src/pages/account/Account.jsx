@@ -6,14 +6,11 @@ import { UserData } from "../../context/UserContext";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 const Account = ({ user }) => {
-  const { setIsAuth, setUser } = UserData();
+  const { logoutUser } = UserData();
   const navigate = useNavigate();
-  const logoutHandler = () => {
-    localStorage.clear();
-    setUser([]);
-    setIsAuth(false);
-    toast.success("Logged Out");
-    navigate("/login");
+  const logoutHandler = async () => {
+    await logoutUser(navigate);
+    toast.success("Logged out");
   };
   return (
     <div>
@@ -44,11 +41,11 @@ const Account = ({ user }) => {
             )}
             <br />
             <button
-              className="common-btn"
+              type="button"
+              className="common-btn common-btn--danger"
               onClick={logoutHandler}
-              style={{ backgroundColor: "red" }}
             >
-              <SlLogout></SlLogout>LogOut
+              <SlLogout /> Log out
             </button>
           </div>
         </div>

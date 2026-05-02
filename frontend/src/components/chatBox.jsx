@@ -1,6 +1,5 @@
-// src/components/ChatBox.jsx
 import { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../utils/api";
 import { useSocket } from "../context/SocketContext";
 import "./chatBox.css";
 
@@ -9,15 +8,12 @@ const ChatBox = ({ user }) => {
   const [messages, setMessages] = useState([]);
   const socket = useSocket();
 
-  const token = localStorage.getItem("token");
   useEffect(() => {
-    axios
-      .get("http://localhost:5000/api/chat", {
-        headers: { token },
-      })
+    api
+      .get("/api/chat")
       .then((res) => setMessages(res.data))
       .catch((err) => console.error(err));
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     if (!socket) return;
@@ -33,13 +29,7 @@ const ChatBox = ({ user }) => {
     if (!text.trim()) return;
 
     try {
-      await axios.post(
-        "http://localhost:5000/api/chat",
-        { text },
-        {
-          headers: { token },
-        }
-      );
+      await api.post("/api/chat", { text });
       setMessages((prev) => [...prev, { userName: user.name, text }]);
       setText("");
     } catch (err) {
@@ -68,7 +58,7 @@ const ChatBox = ({ user }) => {
           placeholder="Type message..."
           className="chat-input"
         />
-        <button onClick={sendMessage} className="chat-button">
+        <button type="button" onClick={sendMessage} className="common-btn chat-send-btn">
           Send
         </button>
       </div>
