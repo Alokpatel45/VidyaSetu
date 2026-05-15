@@ -18,7 +18,8 @@ dotenv.config();
 
 const defaultOrigins = [
   "https://www.vidyasetu.me",
-  "https://vidya-setu-frontend-ui-ruddy.vercel.app",
+  "https://vidya-setu-frontend-ui-git-main-alok-patels-projects-a7d43281.vercel.app",
+  "https://vidya-setu-frontend-e1qqbaosg-alok-patels-projects-a7d43281.vercel.app",
 ];
 
 const allowedOrigins = [
