@@ -17,9 +17,10 @@ import { verifyAccessToken } from "./utils/authTokens.js";
 dotenv.config();
 
 const defaultOrigins = [
+  "https://www.vidyasetu.me",
+  "https://vidya-setu-frontend-ui-git-main-alok-patels-projects-a7d43281.vercel.app",
+  "https://vidya-setu-frontend-e1qqbaosg-alok-patels-projects-a7d43281.vercel.app",
   "http://localhost:5173",
-  "http://localhost:3000",
-  "https://vidya-setu-frontend-ruddy.vercel.app",
 ];
 
 const allowedOrigins = [
@@ -84,6 +85,16 @@ app.use(
     exposedHeaders: ["x-access-token"],
   })
 );
+
+// Health Check Endpoints (for Render, UptimeRobot, and Cloud Monitoring)
+app.get(["/health", "/api/health"], (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    message: "VidyaSetu Server is healthy and running",
+    timestamp: new Date().toISOString(),
+    uptime: Math.floor(process.uptime()),
+  });
+});
 
 // Routes
 app.use("/api", userRoute);

@@ -11,6 +11,7 @@
   "author": "alok",
   "license": "ISC",
   "dependencies": {
+    "@heyputer/puter.js": "^2.6.1",
     "bcrypt": "^5.1.1",
     "cloudinary": "^1.41.0",
     "cookie-parser": "^1.4.7",
@@ -23,6 +24,7 @@
     "multer": "^1.4.5-lts.1",
     "multer-storage-cloudinary": "^4.0.0",
     "nodemailer": "^6.10.0",
+    "pdf-parse": "^2.4.5",
     "razorpay": "^2.9.6",
     "socket.io": "^4.8.1",
     "uuid": "^11.0.5",
