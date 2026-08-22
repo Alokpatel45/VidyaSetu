@@ -86,6 +86,16 @@ app.use(
   })
 );
 
+// Health Check Endpoints (for Render, UptimeRobot, and Cloud Monitoring)
+app.get(["/health", "/api/health"], (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    message: "VidyaSetu Server is healthy and running",
+    timestamp: new Date().toISOString(),
+    uptime: Math.floor(process.uptime()),
+  });
+});
+
 // Routes
 app.use("/api", userRoute);
 app.use("/api", courseRoute);

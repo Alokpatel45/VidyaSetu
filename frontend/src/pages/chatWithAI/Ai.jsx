@@ -182,36 +182,40 @@ const Ai = () => {
 
       messages.push({ role: "user", content: userQuestion });
 
-      // Primary: Puter.js free Gemini
+      // Primary: VidyaSetu Server AI API (Seamless, Instant, No Puter Popups)
       try {
-        const response = await puter.ai.chat(messages, {
-          model: "gemini-2.5-flash",
-        });
-
-        if (typeof response === "string") {
-          answer = response;
-        } else if (response?.message?.content) {
-          answer =
-            typeof response.message.content === "string"
-              ? response.message.content
-              : response.message.content[0]?.text;
-        } else if (response?.text) {
-          answer = response.text;
-        }
-      } catch (puterErr) {
-        console.warn(
-          "Puter.js client call failed, falling back to server API...",
-          puterErr
-        );
-      }
-
-      // Secondary: Server API fallback
-      if (!answer) {
         const { data } = await api.post("/gemini", {
           question: userQuestion,
           history: qaList,
         });
         answer = data?.reply;
+      } catch (serverErr) {
+        console.warn(
+          "Server AI endpoint error, attempting Puter client fallback...",
+          serverErr
+        );
+      }
+
+      // Secondary Fallback: Puter.js (Only if server API fails)
+      if (!answer) {
+        try {
+          const response = await puter.ai.chat(messages, {
+            model: "gemini-2.5-flash",
+          });
+
+          if (typeof response === "string") {
+            answer = response;
+          } else if (response?.message?.content) {
+            answer =
+              typeof response.message.content === "string"
+                ? response.message.content
+                : response.message.content[0]?.text;
+          } else if (response?.text) {
+            answer = response.text;
+          }
+        } catch (puterErr) {
+          console.warn("Puter fallback failed:", puterErr);
+        }
       }
 
       if (answer) {
