@@ -11,6 +11,11 @@ import {
   FiBookOpen,
   FiHelpCircle,
   FiZap,
+  FiPaperclip,
+  FiFileText,
+  FiImage,
+  FiX,
+  FiUploadCloud,
 } from "react-icons/fi";
 import { RiRobotLine } from "react-icons/ri";
 import api from "../../utils/api";
@@ -146,7 +151,10 @@ const Ai = () => {
   const [question, setQuestion] = useState("");
   const [qaList, setQaList] = useState([]);
   const [copiedIndex, setCopiedIndex] = useState(null);
+  const [documents, setDocuments] = useState([]);
+  const [isUploading, setIsUploading] = useState(false);
   const chatEndRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -155,6 +163,56 @@ const Ai = () => {
   useEffect(() => {
     scrollToBottom();
   }, [qaList, isLoading]);
+
+  useEffect(() => {
+    fetchDocuments();
+  }, []);
+
+  const fetchDocuments = async () => {
+    try {
+      const { data } = await api.get("/gemini/documents");
+      setDocuments(data.documents || []);
+    } catch {
+      // Guest or unauthenticated state
+    }
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    setIsUploading(true);
+    const toastId = toast.loading("Extracting text & generating vector embeddings...");
+
+    try {
+      const { data } = await api.post("/gemini/upload-doc", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      toast.success(data.message || "Document indexed for RAG search!", { id: toastId });
+      fetchDocuments();
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || "Failed to process document for RAG.",
+        { id: toastId }
+      );
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDeleteDocument = async (documentId) => {
+    try {
+      await api.delete(`/gemini/documents/${documentId}`);
+      toast.success("Document removed from AI vector memory");
+      setDocuments((prev) => prev.filter((d) => d._id !== documentId));
+    } catch {
+      toast.error("Failed to remove document");
+    }
+  };
 
   const handleAsk = async (customPrompt) => {
     const promptToSend = typeof customPrompt === "string" ? customPrompt : question;
@@ -182,7 +240,7 @@ const Ai = () => {
 
       messages.push({ role: "user", content: userQuestion });
 
-      // Primary: VidyaSetu Server AI API (Seamless, Instant, No Puter Popups)
+      // Primary: VidyaSetu Server AI API (Seamless, Instant, RAG Context Search)
       try {
         const { data } = await api.post("/gemini", {
           question: userQuestion,
@@ -249,9 +307,9 @@ const Ai = () => {
   };
 
   const starterSuggestions = [
+    { icon: <FiUploadCloud />, text: "Upload a PDF or Image to ask questions based on your document" },
     { icon: <FiBookOpen />, text: "Explain key concepts of Object-Oriented Programming" },
     { icon: <FiZap />, text: "Give me study tips to prepare for final exams" },
-    { icon: <FiHelpCircle />, text: "How can I improve my problem solving skills?" },
   ];
 
   return (
@@ -289,14 +347,20 @@ const Ai = () => {
                 <RiRobotLine size={36} />
               </div>
               <h2>Hi! I'm your VidyaSetu Study Assistant</h2>
-              <p>Ask me anything about your subjects, lectures, or study topics.</p>
+              <p>Ask me anything about your subjects, or upload a PDF, TXT, or Image for context-aware RAG search.</p>
 
               <div className="starter-chips">
                 {starterSuggestions.map((item, idx) => (
                   <button
                     key={idx}
                     className="chip-btn"
-                    onClick={() => handleAsk(item.text)}
+                    onClick={() => {
+                      if (idx === 0) {
+                        fileInputRef.current?.click();
+                      } else {
+                        handleAsk(item.text);
+                      }
+                    }}
                   >
                     <span className="chip-icon">{item.icon}</span>
                     <span>{item.text}</span>
@@ -358,19 +422,62 @@ const Ai = () => {
                   <span></span>
                   <span></span>
                 </div>
-                <span className="thinking-text">Thinking...</span>
+                <span className="thinking-text">Searching document embeddings & thinking...</span>
               </div>
             </div>
           )}
           <div ref={chatEndRef} />
         </div>
 
-        {/* Fixed Input Bar */}
+        {/* Fixed Input Bar & Document Context Bar */}
         <div className="ai-input-wrapper">
+          {/* Active Documents List Bar */}
+          {documents.length > 0 && (
+            <div className="active-docs-bar">
+              <span className="docs-bar-label">RAG Memory:</span>
+              <div className="docs-chips-list">
+                {documents.map((doc) => (
+                  <div key={doc._id} className="doc-chip" title={`${doc.chunkCount} vector chunks`}>
+                    <span className="doc-icon">
+                      {doc.fileType === "image" ? <FiImage /> : <FiFileText />}
+                    </span>
+                    <span className="doc-name">{doc.fileName}</span>
+                    <button
+                      className="doc-remove-btn"
+                      onClick={() => handleDeleteDocument(doc._id)}
+                      title="Remove document from AI memory"
+                    >
+                      <FiX size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="input-group">
+            {/* Hidden File Input */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileUpload}
+              style={{ display: "none" }}
+              accept=".pdf,.txt,.md,image/*"
+            />
+
+            {/* Upload Attachment Button */}
+            <button
+              className={`attach-btn ${isUploading ? "uploading" : ""}`}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isLoading || isUploading}
+              title="Upload PDF, TXT, or Image for RAG AI Search"
+            >
+              <FiPaperclip size={18} />
+            </button>
+
             <input
               type="text"
-              placeholder="Ask a question..."
+              placeholder="Ask a question or request information from uploaded files..."
               value={question}
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleAsk();
@@ -388,7 +495,7 @@ const Ai = () => {
             </button>
           </div>
           <div className="input-footer-note">
-            <span>VidyaSetu AI may produce context-aware study responses.</span>
+            <span>Attach documents (PDF / TXT / Images) to query them with Gemini Vector RAG search.</span>
           </div>
         </div>
       </div>
@@ -397,5 +504,6 @@ const Ai = () => {
 };
 
 export default Ai;
+
 
 
