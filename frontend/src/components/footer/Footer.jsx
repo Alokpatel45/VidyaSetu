@@ -6,20 +6,36 @@ const Footer = () => {
   const location = useLocation();
   const isHome = location.pathname === "/";
 
+  const teamMembers = [
+    { name: "Alok Patel", link: "https://github.com/alokpatel45" },
+    { name: "Prathap Kumar", link: "https://github.com/" },
+    { name: "Aman Kumar Singh", link: "https://github.com/" },
+    { name: "Abhay Kumar", link: "https://github.com/" },
+    { name: "Bhukya Naveen", link: "https://github.com/" },
+  ];
+
   return (
     <footer className={isHome ? "full-footer" : "thin-footer"}>
       <div className="footer-content">
         <p className="footer-copyright">
-          &copy; {new Date().getFullYear()} VidyaSetu. All rights reserved.{" "}
+          <span>&copy; {new Date().getFullYear()} VidyaSetu. All rights reserved.</span>
           <span className="footer-made-by">
             Made with ❤️ by{" "}
-            <a
-              href="https://github.com/alokpatel45"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Alok Patel
-            </a>
+            <span className="team-list">
+              {teamMembers.map((member, index) => (
+                <React.Fragment key={index}>
+                  <a
+                    href={member.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="team-member-name"
+                  >
+                    {member.name}
+                  </a>
+                  {index < teamMembers.length - 1 && <span className="team-sep">•</span>}
+                </React.Fragment>
+              ))}
+            </span>
           </span>
         </p>
         <div className="social-links">
@@ -56,7 +72,7 @@ const Footer = () => {
             <i className="fab fa-linkedin-in"></i>
           </a>
           <a
-            href="https://github.com/"
+            href="https://github.com/alokpatel45"
             target="_blank"
             rel="noopener noreferrer"
             title="GitHub"
