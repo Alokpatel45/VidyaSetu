@@ -1,11 +1,24 @@
 import React, { useEffect, useState } from "react";
 import "./lecture.css";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router-dom";
 import api from "../utils/api";
 import { resolveMediaUrl } from "../utils/mediaUrl";
 import { subscriptionIncludes } from "../utils/subscription";
 import Loading from "../components/loding/Loading";
 import toast from "react-hot-toast";
+import {
+  FiPlay,
+  FiPlus,
+  FiTrash2,
+  FiTv,
+  FiChevronRight,
+  FiChevronLeft,
+  FiUploadCloud,
+  FiBookOpen,
+  FiCpu,
+  FiX,
+  FiFileText,
+} from "react-icons/fi";
 
 const Lecture = ({ user }) => {
   const [lectures, setLectures] = useState([]);
@@ -57,6 +70,7 @@ const Lecture = ({ user }) => {
 
   const changeVideoHandler = (e) => {
     const file = e.target.files[0];
+    if (!file) return;
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onloadend = () => {
@@ -104,16 +118,25 @@ const Lecture = ({ user }) => {
     fetchLectures();
   }, []);
 
+  const currentIndex = lectures.findIndex((e) => e._id === lecture?._id);
+  const prevLecture = currentIndex > 0 ? lectures[currentIndex - 1] : null;
+  const nextLecture =
+    currentIndex !== -1 && currentIndex < lectures.length - 1
+      ? lectures[currentIndex + 1]
+      : null;
+
   return (
     <div className="lecture-page-container">
       {loading ? (
         <Loading />
       ) : (
-        <div className="lecture-grid">
-          {/* Left Side: Video Player */}
+        <div className="lecture-workspace">
+          {/* Main Content Area */}
           <div className="lecture-view-section">
             {lecLoading ? (
-              <div className="player-loading"><Loading /></div>
+              <div className="player-loading">
+                <Loading />
+              </div>
             ) : lecture ? (
               <div className="main-player-card">
                 <div className="video-viewport">
@@ -126,32 +149,81 @@ const Lecture = ({ user }) => {
                     key={lecture._id}
                   ></video>
                 </div>
+
+                {/* Player Toolbar & Meta */}
                 <div className="lecture-info">
-                  <span className="lecture-tag">Now Playing</span>
-                  <h1>{lecture.title}</h1>
-                  <p>{lecture.description}</p>
+                  <div className="lecture-meta-header">
+                    <span className="lecture-tag">
+                      <span className="live-dot"></span> Lecture {currentIndex + 1} of {lectures.length}
+                    </span>
+                    
+                    <div className="lecture-actions-nav">
+                      <button
+                        className="nav-lec-btn"
+                        disabled={!prevLecture}
+                        onClick={() => prevLecture && fetchLecture(prevLecture._id)}
+                      >
+                        <FiChevronLeft size={16} /> Prev
+                      </button>
+                      <button
+                        className="nav-lec-btn"
+                        disabled={!nextLecture}
+                        onClick={() => nextLecture && fetchLecture(nextLecture._id)}
+                      >
+                        Next <FiChevronRight size={16} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <h1 className="lecture-title-text">{lecture.title}</h1>
+                  <p className="lecture-desc-text">{lecture.description}</p>
+
+                  <div className="lecture-quick-tools">
+                    <Link to="/ai" className="ai-assist-btn">
+                      <FiCpu /> Ask AI Tutor
+                    </Link>
+                    <Link to={`/ai/quiz/${params.id}`} className="quiz-assist-btn">
+                      <FiFileText /> Take Practice Quiz
+                    </Link>
+                  </div>
                 </div>
               </div>
             ) : (
               <div className="no-lecture-selected">
-                <div className="empty-icon">📺</div>
-                <h2>Ready to start?</h2>
-                <p>Select a lecture from the sidebar to begin learning.</p>
+                <div className="empty-icon-wrapper">
+                  <FiTv size={48} />
+                </div>
+                <h2>Ready to start learning?</h2>
+                <p>Select a lecture from the course playlist on the right to begin watching.</p>
               </div>
             )}
           </div>
 
-          {/* Right Side: Sidebar */}
+          {/* Sidebar Playlist */}
           <div className="lecture-sidebar">
             <div className="sidebar-header">
-              <h2>Course Content</h2>
-              <span className="lec-count">{lectures.length} Lectures</span>
+              <div className="sidebar-header-title">
+                <FiBookOpen className="sidebar-icon" />
+                <h3>Course Content</h3>
+              </div>
+              <span className="lec-count-pill">{lectures.length} Lectures</span>
             </div>
 
             {user && user.role === "admin" && (
               <div className="admin-actions">
-                <button className="add-lec-btn" onClick={() => setShow(!show)}>
-                  {show ? "Close Form" : "+ Add New Lecture"}
+                <button
+                  className={`add-lec-btn ${show ? "active" : ""}`}
+                  onClick={() => setShow(!show)}
+                >
+                  {show ? (
+                    <>
+                      <FiX /> Close Form
+                    </>
+                  ) : (
+                    <>
+                      <FiPlus /> Add New Lecture
+                    </>
+                  )}
                 </button>
               </div>
             )}
@@ -159,23 +231,40 @@ const Lecture = ({ user }) => {
             {show && (
               <div className="admin-form-overlay">
                 <form className="add-lecture-form" onSubmit={submitHandler}>
-                  <h3>New Lecture</h3>
+                  <h3>Upload New Lecture</h3>
                   <div className="form-field">
-                    <label>Title</label>
-                    <input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Introduction to React" />
+                    <label>Lecture Title</label>
+                    <input
+                      type="text"
+                      required
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="e.g. 01 - Introduction to Course"
+                    />
                   </div>
                   <div className="form-field">
                     <label>Description</label>
-                    <textarea required value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What will students learn?" />
+                    <textarea
+                      required
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="Describe what students will learn..."
+                    />
                   </div>
                   <div className="form-field">
                     <label className="file-input-label">
-                      <span>{video ? "Video Selected" : "Upload Video"}</span>
-                      <input type="file" required onChange={changeVideoHandler} accept="video/*" />
+                      <FiUploadCloud size={24} />
+                      <span>{video ? video.name || "Video File Selected" : "Upload Video File"}</span>
+                      <input
+                        type="file"
+                        required
+                        onChange={changeVideoHandler}
+                        accept="video/*"
+                      />
                     </label>
                   </div>
                   <button disabled={btnLoading} type="submit" className="submit-btn">
-                    {btnLoading ? "Processing..." : "Create Lecture"}
+                    {btnLoading ? "Uploading Video..." : "Publish Lecture"}
                   </button>
                 </form>
               </div>
@@ -183,27 +272,38 @@ const Lecture = ({ user }) => {
 
             <div className="playlist-area">
               {lectures.length > 0 ? (
-                lectures.map((e, i) => (
-                  <div key={e._id} className="playlist-item-wrapper">
-                    <div
-                      className={`playlist-item ${lecture && lecture._id === e._id ? "is-active" : ""}`}
-                      onClick={() => fetchLecture(e._id)}
-                    >
-                      <div className="lec-index">{i + 1}</div>
-                      <div className="lec-details">
-                        <span className="lec-title">{e.title}</span>
-                        <span className="lec-status">{lecture && lecture._id === e._id ? "Playing" : "Available"}</span>
+                lectures.map((e, i) => {
+                  const isActive = lecture && lecture._id === e._id;
+                  return (
+                    <div key={e._id} className="playlist-item-wrapper">
+                      <div
+                        className={`playlist-item ${isActive ? "is-active" : ""}`}
+                        onClick={() => fetchLecture(e._id)}
+                      >
+                        <div className="lec-index-badge">
+                          {isActive ? <FiPlay size={14} /> : i + 1}
+                        </div>
+                        <div className="lec-details">
+                          <span className="lec-title">{e.title}</span>
+                          <span className="lec-status">
+                            {isActive ? "Now Playing" : "Video Lecture"}
+                          </span>
+                        </div>
                       </div>
+                      {user && user.role === "admin" && (
+                        <button
+                          onClick={() => deleteHandler(e._id)}
+                          className="delete-lec-icon"
+                          title="Delete Lecture"
+                        >
+                          <FiTrash2 size={15} />
+                        </button>
+                      )}
                     </div>
-                    {user && user.role === "admin" && (
-                      <button onClick={() => deleteHandler(e._id)} className="delete-lec-icon" title="Delete Lecture">
-                        🗑️
-                      </button>
-                    )}
-                  </div>
-                ))
+                  );
+                })
               ) : (
-                <div className="no-lecs">No lectures available yet.</div>
+                <div className="no-lecs">No lectures available in this course yet.</div>
               )}
             </div>
           </div>
@@ -214,3 +314,4 @@ const Lecture = ({ user }) => {
 };
 
 export default Lecture;
+
