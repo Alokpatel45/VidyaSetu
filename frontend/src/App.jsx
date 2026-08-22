@@ -1,6 +1,7 @@
 import React from "react";
 import "./App.css";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+import { Analytics } from "@vercel/analytics/react";
 import Home from "./home/Home";
 import Header from "./components/header/Header";
 import Login from "./pages/Auth/Login";
@@ -111,6 +112,7 @@ const App = () => {
             </main>
             <Footer />
           </div>
+          <Analytics />
         </Router>
       )}
     </>
