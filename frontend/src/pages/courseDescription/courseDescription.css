@@ -1,9 +1,15 @@
 .course-description {
-  padding: 60px 20px;
+  padding: 60px 32px;
   text-align: center;
-  min-height: 60vh;
+  min-height: calc(100vh - 65px);
+  width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   background: linear-gradient(to right, #f9f9f9, #eef2f3);
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  box-sizing: border-box;
 
   .course-header {
     display: flex;

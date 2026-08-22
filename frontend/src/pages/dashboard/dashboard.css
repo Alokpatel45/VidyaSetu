@@ -1,9 +1,13 @@
 .student-dashboard {
-  padding: clamp(1.75rem, 6vw, 3.25rem) clamp(1rem, 4vw, 1.5rem);
+  padding: 40px 32px;
   text-align: center;
-  min-height: 42vh;
-  max-width: 1180px;
-  margin: 0 auto;
+  min-height: calc(100vh - 65px);
+  width: 100%;
+  max-width: 100%;
+  flex: 1;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 }
 
 .student-dashboard h2 {
