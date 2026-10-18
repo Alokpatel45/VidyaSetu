@@ -20,11 +20,7 @@ export const geminiPromptSchema = z.object({
  * AFTER: Strict schema validation for quiz generation
  */
 export const geminiQuizSchema = z.object({
-  topic: z
-    .string()
-    .min(3, "Topic must be at least 3 characters")
-    .max(200, "Topic must not exceed 200 characters")
-    .trim(),
+  courseId: z.string().regex(/^[a-fA-F0-9]{24}$/, "Invalid course ID"),
   numQuestions: z.coerce
     .number()
     .int("Number of questions must be an integer")

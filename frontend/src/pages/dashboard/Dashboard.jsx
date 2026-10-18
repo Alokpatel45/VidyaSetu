@@ -3,6 +3,8 @@ import "./dashboard.css";
 import { CourseData } from "../../context/CourseContext";
 import CourseCard from "../../components/courseCard/CourseCard";
 
+import PastTests from "./PastTests.jsx";
+
 const Dashboard = () => {
   const { myCourse } = CourseData();
   return (
@@ -15,6 +17,7 @@ const Dashboard = () => {
           <p>Please buy any Course</p>
         )}
       </div>
+      <PastTests />
     </div>
   );
 };
