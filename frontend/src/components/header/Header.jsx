@@ -47,10 +47,11 @@ const Header = ({ isAuth }) => {
           type="button"
           className="site-header__menu-btn"
           aria-expanded={menuOpen}
+          aria-controls="site-navigation"
           aria-label={menuOpen ? "Close navigation" : "Open navigation"}
           onClick={() => setMenuOpen((o) => !o)}
         >
-          <span className="site-header__menu-icon" data-open={menuOpen} />
+          <span className="site-header__menu-icon" data-open={menuOpen} aria-hidden="true" />
         </button>
 
         <div
@@ -66,7 +67,7 @@ const Header = ({ isAuth }) => {
           VidyaSetu
         </div>
 
-        <nav className={`site-header__nav ${menuOpen ? "site-header__nav--open" : ""}`}>
+        <nav id="site-navigation" aria-label="Main navigation" className={`site-header__nav ${menuOpen ? "site-header__nav--open" : ""}`}>
           <div className="site-header__nav-links">{nav}</div>
         </nav>
 

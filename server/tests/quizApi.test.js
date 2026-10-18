@@ -1,7 +1,9 @@
 import test, { afterEach } from "node:test";
 import assert from "node:assert/strict";
+import axios from "axios";
+import { Courses } from "../models/Courses.js";
 import { QuizAttempt } from "../models/QuizAttempt.js";
-import { checkQuizAnswer, getQuizAttempt, listQuizAttempts } from "../controllers/aiQuiz.js";
+import aiQuiz, { checkQuizAnswer, getQuizAttempt, listQuizAttempts } from "../controllers/aiQuiz.js";
 import { parseGeneratedQuiz, publicAttempt } from "../services/quizValidation.js";
 import { geminiQuizSchema } from "../schemas/geminiSchema.js";
 
@@ -12,8 +14,16 @@ const question = { question: "FIFO?", options: ["Stack", "Queue", "Tree", "Graph
 const fresh = () => ({ _id: id, user, courseId: id, topic: "Data structures", difficulty: "medium", questions: [question], answers: [], status: "in_progress", score: 0, __v: 0 });
 const req = (body = {}, owner = user) => ({ params: { attemptId: id }, user: { _id: owner }, body, query: {} });
 const response = () => ({ code: 200, status(code) { this.code = code; return this; }, json(body) { this.body = body; return this; } });
+const originalCourseLookup = Courses.findById;
+const originalCreate = QuizAttempt.create;
+const originalPost = axios.post;
 const original = { findOne: QuizAttempt.findOne, findOneAndUpdate: QuizAttempt.findOneAndUpdate, find: QuizAttempt.find };
-afterEach(() => Object.assign(QuizAttempt, original));
+afterEach(() => {
+  Object.assign(QuizAttempt, original);
+  Courses.findById = originalCourseLookup;
+  QuizAttempt.create = originalCreate;
+  axios.post = originalPost;
+});
 
 function database() {
   let stored = fresh();
@@ -112,4 +122,39 @@ test("history queries only this user's completed tests and uses bounded paginati
   assert.equal(res.body.hasMore, true);
   assert.equal(res.body.tests[0].questions, undefined);
   const invalid = response(); await listQuizAttempts({ ...req(), query: { page: "-1" } }, invalid); assert.equal(invalid.code, 400);
+});
+
+
+test("Puter-generated quiz is validated, saved server-side and returned without answer keys or tokens", async () => {
+  Courses.findById = async () => ({ title: "Data structures" });
+  axios.post = async (url, body, config) => {
+    assert.equal(config.headers.Authorization, "Bearer learner-session");
+    return { data: { choices: [{ message: { content: JSON.stringify([question]) } }] } };
+  };
+  QuizAttempt.create = async data => {
+    assert.equal(data.user, user);
+    assert.equal(data.questions[0].correctAnswer, "Queue");
+    assert.equal(data.puterToken, undefined);
+    assert.equal(JSON.stringify(data).includes("learner-session"), false);
+    return { ...fresh(), ...data };
+  };
+  const res = response();
+  await aiQuiz({ ...req({ courseId: id, numQuestions: 1, difficulty: "medium" }), headers: { "x-puter-token": "learner-session" } }, res);
+  assert.equal(res.code, 201);
+  assert.deepEqual(res.body.attempt.questions, [{ question: question.question, options: question.options }]);
+  assert.equal(JSON.stringify(res.body).includes("learner-session"), false);
+});
+test("quiz generation requires a Puter session before database or AI access", async () => {
+  Courses.findById = () => assert.fail("must not look up course");
+  const res = response(); await aiQuiz(req({ courseId: id, numQuestions: 1 }), res);
+  assert.equal(res.code, 400);
+  assert.equal(res.body.code, "PUTER_AUTH_REQUIRED");
+});
+test("invalid Puter-generated questions are rejected without creating an attempt", async () => {
+  Courses.findById = async () => ({ title: "Data structures" });
+  axios.post = async () => ({ data: { choices: [{ message: { content: "[]" } }] } });
+  QuizAttempt.create = () => assert.fail("must not save malformed quiz");
+  const res = response();
+  await aiQuiz({ ...req({ courseId: id, numQuestions: 1 }), headers: { "x-puter-token": "session" } }, res);
+  assert.equal(res.code, 502);
 });

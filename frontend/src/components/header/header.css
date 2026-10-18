@@ -132,6 +132,12 @@
 @media (max-width: 992px) {
   .site-header__menu-btn {
     display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    border-radius: 8px;
     order: -1;
     background: none;
     border: none;
@@ -140,8 +146,51 @@
     cursor: pointer;
   }
 
+  .site-header__menu-btn:focus-visible {
+    outline: 2px solid #00d2ff;
+    outline-offset: 2px;
+  }
+
+  .site-header__menu-icon,
+  .site-header__menu-icon::before,
+  .site-header__menu-icon::after {
+    display: block;
+    width: 24px;
+    height: 2px;
+    border-radius: 2px;
+    background: currentColor;
+  }
+
+  .site-header__menu-icon {
+    position: relative;
+  }
+
+  .site-header__menu-icon::before,
+  .site-header__menu-icon::after {
+    content: "";
+    position: absolute;
+    left: 0;
+  }
+
+  .site-header__menu-icon::before { top: -7px; }
+  .site-header__menu-icon::after { top: 7px; }
+  .site-header__menu-icon[data-open="true"] { background: transparent; }
+  .site-header__menu-icon[data-open="true"]::before { top: 0; transform: rotate(45deg); }
+  .site-header__menu-icon[data-open="true"]::after { top: 0; transform: rotate(-45deg); }
+
   .site-header__inner {
     justify-content: space-between;
+    gap: 12px;
+    padding: 0 12px;
+  }
+
+  .site-header__brand {
+    font-size: 1.25rem;
+    gap: 8px;
+  }
+
+  .site-header__signup {
+    padding: 10px 12px;
   }
 
   .site-header__nav {
@@ -152,12 +201,16 @@
     background: #0f172a;
     flex-direction: column;
     max-height: 0;
+    visibility: hidden;
     overflow: hidden;
     transition: all 0.3s ease;
   }
 
   .site-header__nav--open {
-    max-height: 500px;
+    max-height: min(500px, calc(100dvh - 80px));
+    visibility: visible;
+    overflow-y: auto;
+    box-sizing: border-box;
     padding: 20px 0;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   }
