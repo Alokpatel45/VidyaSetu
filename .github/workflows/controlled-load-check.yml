@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 6
     env:
-      BACKEND_URL: ${{ vars.VIDYASETU_BACKEND_URL }}
+      BACKEND_URL: https://vidyasetu-backend-sng1.onrender.com
     steps:
       - name: Check public homepage and 50 concurrent backend requests
         shell: bash
