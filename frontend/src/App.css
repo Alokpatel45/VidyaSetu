@@ -2,6 +2,7 @@
   font-synthesis: none;
   --font-sans: Inter, system-ui, -apple-system, sans-serif;
   --color-bg: #f8fafc;
+  --color-page-background: linear-gradient(135deg, #f9f9f9, #eef3da);
   --color-bg-strong: #edf3fc;
   --color-surface: #fff;
   --color-text: #172033;
@@ -28,6 +29,7 @@
 }
 :root[data-theme="dark"] {
   --color-bg: #101217;
+  --color-page-background: var(--color-bg);
   --color-bg-strong: #202a3c;
   --color-surface: #181b22;
   --color-text: #f2f5fa;
@@ -67,6 +69,7 @@ body {
   flex-direction: column;
 }
 .main-content {
+  background: var(--color-page-background);
   flex: 1;
   min-width: 0;
 }
