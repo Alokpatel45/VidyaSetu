@@ -4,37 +4,54 @@ on:
     paths:
       - '.github/workflows/controlled-load-check.yml'
   workflow_dispatch:
-
 permissions:
   contents: read
-
 jobs:
-  ten-users:
+  read-only-load:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 6
+    env:
+      BACKEND_URL: ${{ vars.VIDYASETU_BACKEND_URL }}
     steps:
-      - name: Run 10 concurrent read-only requests
+      - name: Check public homepage and 50 concurrent backend requests
         shell: bash
         run: |
           python3 - <<'PY'
-          import concurrent.futures, urllib.request, urllib.error, time, statistics
-          URL = 'https://vidyasetu.me/'
-          def hit(_):
-              start=time.monotonic()
+          import concurrent.futures, json, os, statistics, time, urllib.request
+          def get(url):
+              t=time.monotonic()
               try:
-                  req=urllib.request.Request(URL,headers={'User-Agent':'VidyaSetu-controlled-load-check/1.0'},method='GET')
+                  req=urllib.request.Request(url,headers={'User-Agent':'VidyaSetu-controlled-readonly-test/1.0','Accept':'application/json'})
                   with urllib.request.urlopen(req,timeout=25) as resp:
-                      return resp.status,round((time.monotonic()-start)*1000),None
-              except Exception as exc:
-                  return 0,round((time.monotonic()-start)*1000),str(exc)[:160]
-          print('Warm-up GET (separate from measurement):',hit(0),flush=True)
-          with concurrent.futures.ThreadPoolExecutor(max_workers=10) as pool:
-              results=list(pool.map(hit,range(10)))
-          ok=[lat for status,lat,err in results if 200<=status<400]
-          print('Concurrent requests:',len(results),'Successful:',len(ok),'Errors:',len(results)-len(ok))
-          print('Status/latency/error:',results)
-          if ok:
-              print('Successful response latency ms: mean=',round(statistics.mean(ok)), 'max=',max(ok))
-          if len(ok)!=10:
-              raise SystemExit('Some requests failed; inspect statuses above')
+                      body=resp.read(200000)
+                      return resp.status,round((time.monotonic()-t)*1000),body,None
+              except Exception as e:
+                  return 0,round((time.monotonic()-t)*1000),b'',str(e)[:160]
+          homepage=get('https://vidyasetu.me/')
+          print('Frontend warmup status and ms:',homepage[:2],flush=True)
+          base=os.environ.get('BACKEND_URL','').strip().rstrip('/')
+          if not base or not base.startswith('https://'):
+              raise SystemExit('Configure GitHub Actions repository variable VIDYASETU_BACKEND_URL with the HTTPS Render backend origin; no backend test performed.')
+          health=base+'/api/health'
+          warm=get(health)
+          try:
+              healthy=warm[0]==200 and json.loads(warm[2]).get('status')=='ok'
+          except (ValueError,TypeError,AttributeError):
+              healthy=False
+          print('Backend health warmup:',warm[:2], 'valid_json_health:',healthy,flush=True)
+          if not healthy:
+              raise SystemExit('Backend health validation failed; refusing to run concurrent load.')
+          for endpoint in ('/api/health','/api/course/all'):
+              url=base+endpoint
+              # Bounded one-shot test: 50 GETs only, no auth or writes.
+              with concurrent.futures.ThreadPoolExecutor(max_workers=50) as pool:
+                  rows=list(pool.map(lambda _:get(url),range(50)))
+              success=[ms for status,ms,body,err in rows if status==200]
+              failures=[(status,err) for status,ms,body,err in rows if status!=200]
+              print(endpoint,'total=',len(rows),'ok=',len(success),'failed=',len(failures),
+                    'avg_ms=',round(statistics.mean(success)) if success else 'N/A',
+                    'max_ms=',max(success) if success else 'N/A',
+                    'errors=',failures[:5],flush=True)
+              if len(success)!=50:
+                  raise SystemExit('Some backend requests failed.')
           PY
