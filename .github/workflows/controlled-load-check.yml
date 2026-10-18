@@ -1,0 +1,40 @@
+name: Controlled production read-only load check
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/controlled-load-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ten-users:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Run 10 concurrent read-only requests
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import concurrent.futures, urllib.request, urllib.error, time, statistics
+          URL = 'https://vidyasetu.me/'
+          def hit(_):
+              start=time.monotonic()
+              try:
+                  req=urllib.request.Request(URL,headers={'User-Agent':'VidyaSetu-controlled-load-check/1.0'},method='GET')
+                  with urllib.request.urlopen(req,timeout=25) as resp:
+                      return resp.status,round((time.monotonic()-start)*1000),None
+              except Exception as exc:
+                  return 0,round((time.monotonic()-start)*1000),str(exc)[:160]
+          print('Warm-up GET (separate from measurement):',hit(0),flush=True)
+          with concurrent.futures.ThreadPoolExecutor(max_workers=10) as pool:
+              results=list(pool.map(hit,range(10)))
+          ok=[lat for status,lat,err in results if 200<=status<400]
+          print('Concurrent requests:',len(results),'Successful:',len(ok),'Errors:',len(results)-len(ok))
+          print('Status/latency/error:',results)
+          if ok:
+              print('Successful response latency ms: mean=',round(statistics.mean(ok)), 'max=',max(ok))
+          if len(ok)!=10:
+              raise SystemExit('Some requests failed; inspect statuses above')
+          PY
