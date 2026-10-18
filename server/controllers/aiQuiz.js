@@ -1,51 +1,87 @@
+import mongoose from "mongoose";
 import tryCatch from "../middlewares/tryCatch.js";
 import { generateAiText } from "../services/aiService.js";
+import { Courses } from "../models/Courses.js";
+import { QuizAttempt } from "../models/QuizAttempt.js";
+import { submitAnswer } from "../services/quizScoring.js";
+import { parseGeneratedQuiz, publicAttempt } from "../services/quizValidation.js";
+import { z } from "zod";
+
+const validId = id => typeof id === "string" && mongoose.isObjectIdOrHexString(id);
 
 const aiQuiz = tryCatch(async (req, res) => {
-  const { topic, numQuestions, difficulty } = req.body;
-
-  const prompt = `
-Generate ${numQuestions} multiple-choice questions on the subject "${topic}" at ${difficulty} difficulty level.
-
-Each question should be a JSON object with:
-- "question": string
-- "options": array of 4 strings
-- "correctAnswer": one of the options
-
-Return ONLY a JSON array of such objects.
-Do NOT include any explanation, markdown (like \`\`\`json), or additional text.
-Ensure the questions are different on each request.
-`;
-
+  const { courseId, numQuestions, difficulty } = req.body;
+  if (!validId(courseId)) return res.status(400).json({ message: "Invalid course ID" });
+  const course = await Courses.findById(courseId);
+  if (!course) return res.status(404).json({ message: "Course not found" });
+  const prompt = `Generate ${numQuestions} different multiple-choice questions about ${JSON.stringify(course.title)} at ${difficulty} difficulty. Return ONLY a JSON array. Each object must have question (string), options (four distinct strings), correctAnswer (exactly one of the options), and explanation (a concise explanation of why the answer is correct).`;
   const raw = await generateAiText(prompt);
-  if (!raw) {
-    return res.status(500).json({ error: "No response from AI" });
-  }
-
-  // Robust JSON extraction: look for the first [ and last ]
-  let jsonString = raw;
-  const startIdx = raw.indexOf("[");
-  const endIdx = raw.lastIndexOf("]");
-  
-  if (startIdx !== -1 && endIdx !== -1) {
-    jsonString = raw.substring(startIdx, endIdx + 1);
-  } else {
-    // If no brackets found, try cleaning markdown as a fallback
-    jsonString = raw.replace(/```json|```/g, "").trim();
-  }
-
-  let quizArray;
+  let questions;
   try {
-    quizArray = JSON.parse(jsonString);
-  } catch (parseError) {
-    console.error("JSON parse error:", parseError.message, "Raw:", raw);
-    return res.status(500).json({
-      error: "Failed to parse quiz response from AI",
-      details: "The AI did not return a valid JSON array.",
-    });
+    questions = parseGeneratedQuiz(raw || "", numQuestions);
+  } catch {
+    return res.status(502).json({ message: "AI returned an invalid quiz; please try again" });
   }
+  const attempt = await QuizAttempt.create({
+    user: req.user._id, courseId, topic: course.title, difficulty, questions,
+  });
+  res.status(201).json({ attempt: publicAttempt(attempt) });
+});
 
-  res.json({ quiz: quizArray });
+export const getQuizAttempt = tryCatch(async (req, res) => {
+  if (!validId(req.params.attemptId)) return res.status(400).json({ message: "Invalid attempt ID" });
+  const attempt = await QuizAttempt.findOne({ _id: req.params.attemptId, user: req.user._id }).lean();
+  if (!attempt) return res.status(404).json({ message: "Quiz attempt not found" });
+  res.json({ attempt: publicAttempt(attempt) });
+});
+
+const answerSchema = z.object({
+  questionIndex: z.number().int().min(0).max(49),
+  selectedAnswer: z.string().min(1).max(2000),
+});
+export const checkQuizAnswer = tryCatch(async (req, res) => {
+  if (!validId(req.params.attemptId)) return res.status(400).json({ message: "Invalid attempt ID" });
+  const parsed = answerSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ message: "Invalid answer submission" });
+  const filter = { _id: req.params.attemptId, user: req.user._id };
+  const attempt = await QuizAttempt.findOne(filter).lean();
+  if (!attempt) return res.status(404).json({ message: "Quiz attempt not found" });
+  const { questionIndex, selectedAnswer } = parsed.data;
+  // Safe retry after a lost response. A different answer can never replace a checked one.
+  if (attempt.answers[questionIndex]?.selectedAnswer === selectedAnswer) {
+    return res.json({ attempt: publicAttempt(attempt) });
+  }
+  let next;
+  try {
+    next = submitAnswer(attempt, questionIndex, selectedAnswer);
+  } catch (error) {
+    return res.status(409).json({ message: error.message });
+  }
+  const updated = await QuizAttempt.findOneAndUpdate({
+    ...filter, status: "in_progress", __v: attempt.__v,
+  }, {
+    $set: { answers: next.answers, score: next.score, status: next.status, completedAt: next.completedAt },
+    $inc: { __v: 1 },
+  }, { new: true, runValidators: true }).lean();
+  if (!updated) return res.status(409).json({ message: "Attempt changed; reload before continuing" });
+  res.json({ attempt: publicAttempt(updated) });
+});
+
+export const listQuizAttempts = tryCatch(async (req, res) => {
+  const parsedPage = Number(req.query.page || 1);
+  if (!Number.isSafeInteger(parsedPage) || parsedPage < 1 || parsedPage > 10000) {
+    return res.status(400).json({ message: "Invalid page" });
+  }
+  const attempts = await QuizAttempt.find({ user: req.user._id, status: "completed" })
+    .sort({ completedAt: -1, _id: -1 }).skip((parsedPage - 1) * 20).limit(21)
+    .select("topic courseId difficulty score completedAt createdAt questions.question").lean();
+  res.json({
+    tests: attempts.slice(0, 20).map(a => ({
+      _id: a._id, topic: a.topic, courseId: a.courseId, difficulty: a.difficulty,
+      score: a.score, totalQuestions: a.questions.length, completedAt: a.completedAt,
+    })),
+    hasMore: attempts.length > 20,
+  });
 });
 
 export default aiQuiz;

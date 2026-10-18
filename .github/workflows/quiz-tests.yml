@@ -1,0 +1,32 @@
+name: Quiz tests
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  quiz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            server/package-lock.json
+            frontend/package-lock.json
+      - run: npm ci --ignore-scripts
+        working-directory: server
+      - run: npm test
+        working-directory: server
+      - run: npm ci --ignore-scripts
+        working-directory: frontend
+      - run: npm test
+        working-directory: frontend
+      - run: npx eslint src/App.jsx src/pages/quiz/Quiz.jsx src/pages/quiz/Quiz.test.jsx src/pages/dashboard/Dashboard.jsx src/pages/dashboard/PastTests.jsx src/components/quiz/QuizReview.jsx
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
