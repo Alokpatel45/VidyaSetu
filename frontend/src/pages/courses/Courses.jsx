@@ -1,96 +1,118 @@
 import CourseCard from "../../components/courseCard/CourseCard";
 import { CourseData } from "../../context/CourseContext";
+import { FiSearch, FiPlay, FiArrowRight } from "react-icons/fi";
+import { Link } from "react-router-dom";
+import { useState, useMemo } from "react";
 import "./courses.css";
-import React, { useState, useMemo } from "react";
 
+const normalizeCategory = (category) =>
+  category === "Web Devwlopment" ? "Web Development" : category;
 const Courses = () => {
-  const { courses } = CourseData();
+  const { courses, myCourse } = CourseData();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
-
   const categories = [
     "All",
-    "Web Development",
-    "App Development",
-    "DSA",
-    "Artificial Intelligence",
-    "Game Development",
-    "Programming Language",
+    ...new Set(
+      (courses || []).map((c) => normalizeCategory(c.category)).filter(Boolean),
+    ),
   ];
-
-  const filteredCourses = useMemo(() => {
-    if (!courses) return [];
-    return courses.filter((c) => {
-      const matchesSearch = c.title.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      // Smart matching: Even if DB has "Devwlopment", "Development" will match it
-      const categoryMatch = (actual, selected) => {
-        if (selected === "All") return true;
-        if (actual === selected) return true;
-        if (selected === "Web Development" && actual === "Web Devwlopment") return true;
-        return false;
-      };
-
-      return matchesSearch && categoryMatch(c.category, selectedCategory);
-    });
-  }, [courses, searchTerm, selectedCategory]);
-
+  const filteredCourses = useMemo(
+    () =>
+      (courses || []).filter((c) => {
+        const category = normalizeCategory(c.category);
+        return (
+          `${c.title} ${category || ""}`
+            .toLowerCase()
+            .includes(searchTerm.trim().toLowerCase()) &&
+          (selectedCategory === "All" || category === selectedCategory)
+        );
+      }),
+    [courses, searchTerm, selectedCategory],
+  );
+  const enrolled = myCourse?.[0];
   return (
     <div className="courses-page-wrapper">
-      <div className="courses-hero">
-        <div className="hero-content">
-          <h1>Discover Your Next Skill</h1>
-          <p>Explore structured courses designed to take you from beginner to pro.</p>
-
-          <div className="search-box-container">
-            <div className="search-input-group">
-              <span className="search-icon">🔍</span>
-              <input
-                type="text"
-                placeholder="Search for courses, topics, or skills..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
+      <header className="courses-hero">
+        <p className="page-eyebrow">Explore · Learn · Practice</p>
+        <h1>Your next skill starts here.</h1>
+        <p className="page-subtitle">
+          Clear lessons, focused practice and a little progress every day.
+        </p>
+      </header>
+      {enrolled && (
+        <section className="continue-learning" aria-label="Continue learning">
+          <span className="continue-learning__icon">
+            <FiPlay aria-hidden="true" />
+          </span>
+          <div>
+            <small>Your learning space</small>
+            <strong>{enrolled.title}</strong>
           </div>
+          <Link
+            className="common-btn common-btn--secondary"
+            to={`/course/study/${enrolled._id}`}
+          >
+            Continue learning <FiArrowRight aria-hidden="true" />
+          </Link>
+        </section>
+      )}
+      <section className="courses-main-content" aria-label="Explore courses">
+        <div className="courses-section-head">
+          <h2>Explore courses</h2>
+          <span className="course-count" role="status">
+            {filteredCourses.length}{" "}
+            {filteredCourses.length === 1 ? "course" : "courses"}
+          </span>
         </div>
-      </div>
-
-      <div className="courses-main-content">
         <div className="filter-section">
-          <div className="category-pills">
+          <label className="search-input-group">
+            <FiSearch aria-hidden="true" />
+            <input
+              type="search"
+              aria-label="Search courses"
+              placeholder="Search courses or topics…"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </label>
+          <div className="category-pills" aria-label="Course categories">
             {categories.map((cat) => (
               <button
+                type="button"
                 key={cat}
-                className={`category-pill ${selectedCategory === cat ? "active" : ""}`}
+                className="category-pill"
+                aria-pressed={selectedCategory === cat}
                 onClick={() => setSelectedCategory(cat)}
               >
                 {cat}
               </button>
             ))}
           </div>
-          <div className="course-count">
-            Showing {filteredCourses.length} courses
-          </div>
         </div>
-
         <div className="courses-grid-layout">
-          {filteredCourses.length > 0 ? (
-            filteredCourses.map((e) => <CourseCard key={e._id} course={e} />)
+          {filteredCourses.length ? (
+            filteredCourses.map((course) => (
+              <CourseCard key={course._id} course={course} />
+            ))
           ) : (
             <div className="no-results-state">
-              <div className="empty-icon">📂</div>
               <h3>No courses found</h3>
-              <p>Try adjusting your search or filter to find what you're looking for.</p>
-              <button onClick={() => { setSearchTerm(""); setSelectedCategory("All"); }} className="reset-btn">
+              <p>Try another search or category.</p>
+              <button
+                onClick={() => {
+                  setSearchTerm("");
+                  setSelectedCategory("All");
+                }}
+                className="common-btn common-btn--secondary"
+              >
                 Clear all filters
               </button>
             </div>
           )}
         </div>
-      </div>
+      </section>
     </div>
   );
 };
-
 export default Courses;

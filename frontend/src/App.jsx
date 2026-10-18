@@ -35,7 +35,7 @@ const App = () => {
         <Router>
           <div className="app-shell">
             <Header isAuth={isAuth} />
-            <main className="main-content">
+            <main id="main-content" className="main-content" tabIndex={-1}>
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/ai" element={<Ai />} />

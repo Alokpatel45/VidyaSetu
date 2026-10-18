@@ -1,5 +1,6 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import "./courseStudy.css";
+import { FiUser, FiClock, FiBookOpen, FiFileText } from "react-icons/fi";
 import React, { useEffect } from "react";
 import { CourseData } from "../../context/CourseContext";
 import { resolveMediaUrl } from "../../utils/mediaUrl";
@@ -30,26 +31,29 @@ const CourseStudy = ({ user }) => {
         <div className="study-card">
           <div className="study-header">
             <div className="study-image-wrapper">
-              <img
-                src={resolveMediaUrl(course.image)}
-                alt={course.title}
-              />
+              <img src={resolveMediaUrl(course.image)} alt={course.title} />
             </div>
             <div className="study-info-content">
-              <span className="study-badge">Enrolled</span>
+              <span className="study-badge">
+                {user?.role === "admin" ? "Course workspace" : "Enrolled"}
+              </span>
               <h1>{course.title}</h1>
               <p className="study-desc">{course.description}</p>
-              
+
               <div className="study-meta">
                 <div className="meta-item">
-                  <span className="meta-icon">👤</span>
+                  <span className="meta-icon">
+                    <FiUser aria-hidden="true" />
+                  </span>
                   <div className="meta-text">
                     <label>Instructor</label>
                     <span>{course.createdBy}</span>
                   </div>
                 </div>
                 <div className="meta-item">
-                  <span className="meta-icon">⏱️</span>
+                  <span className="meta-icon">
+                    <FiClock aria-hidden="true" />
+                  </span>
                   <div className="meta-text">
                     <label>Duration</label>
                     <span>{course.duration} Weeks</span>
@@ -60,8 +64,13 @@ const CourseStudy = ({ user }) => {
           </div>
 
           <div className="study-actions">
-            <Link to={`/lectures/${course._id}`} className="action-card lectures">
-              <div className="action-icon">📚</div>
+            <Link
+              to={`/lectures/${course._id}`}
+              className="action-card lectures"
+            >
+              <div className="action-icon">
+                <FiBookOpen aria-hidden="true" />
+              </div>
               <div className="action-text">
                 <h3>Course Content</h3>
                 <p>Start learning with video lectures</p>
@@ -70,7 +79,9 @@ const CourseStudy = ({ user }) => {
             </Link>
 
             <Link to={`/ai/quiz/${params.id}`} className="action-card quiz">
-              <div className="action-icon">🧠</div>
+              <div className="action-icon">
+                <FiFileText aria-hidden="true" />
+              </div>
               <div className="action-text">
                 <h3>Practice Quiz</h3>
                 <p>Test your knowledge with AI</p>

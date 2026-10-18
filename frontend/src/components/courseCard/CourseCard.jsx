@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
+import { FiCode, FiUser, FiClock } from "react-icons/fi";
 import "./courseCard.css";
 import { resolveMediaUrl } from "../../utils/mediaUrl";
 import { subscriptionIncludes } from "../../utils/subscription";
@@ -9,6 +10,7 @@ import api from "../../utils/api";
 import { CourseData } from "../../context/CourseContext";
 
 const CourseCard = ({ course, onEdit }) => {
+  const [failedImage, setFailedImage] = useState(null);
   const { user, isAuth } = UserData();
   const navigate = useNavigate();
   const { fetchCourses } = CourseData();
@@ -29,22 +31,55 @@ const CourseCard = ({ course, onEdit }) => {
 
   return (
     <article className="course-card">
-      <img
-        src={resolveMediaUrl(course.image)}
-        alt=""
-        className="course-image"
-      />
+      {course.image && failedImage !== course.image ? (
+        <img
+          src={resolveMediaUrl(course.image)}
+          alt=""
+          className="course-image"
+          loading="lazy"
+          onError={() => setFailedImage(course.image)}
+        />
+      ) : (
+        <div
+          className="course-image course-image--placeholder"
+          aria-hidden="true"
+        >
+          <FiCode />
+          <span>Learn. Practice. Build.</span>
+        </div>
+      )}
       <div className="course-card__body">
+        <span className="course-card__category">
+          {course.category === "Web Devwlopment"
+            ? "Web Development"
+            : course.category || "Course"}
+        </span>
         <h3>{course.title}</h3>
-        <p>
-          Instructor — <strong>{course.createdBy}</strong>
+        {course.description && (
+          <p className="course-card__description">{course.description}</p>
+        )}
+        <div className="course-card__meta">
+          <span>
+            <FiUser aria-hidden="true" />
+            {course.createdBy}
+          </span>
+          <span>
+            <FiClock aria-hidden="true" />
+            {course.duration} weeks
+          </span>
+        </div>
+        <p className="course-card__price">
+          ₹{course.price}
+          <small>One-time purchase</small>
         </p>
-        <p>Duration — {course.duration}</p>
-        <p className="course-card__price">₹{course.price}</p>
       </div>
       <div className="course-card__actions">
         {!isAuth && (
-          <button type="button" className="common-btn" onClick={() => navigate("/login")}>
+          <button
+            type="button"
+            className="common-btn"
+            onClick={() => navigate("/login")}
+          >
             Get started
           </button>
         )}

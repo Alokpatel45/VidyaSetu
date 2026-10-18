@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import "./lecture.css";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import api from "../utils/api";
@@ -30,7 +30,6 @@ const Lecture = ({ user }) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [video, setVideo] = useState("");
-  const [videoPreview, setVideoPreview] = useState("");
   const [btnLoading, setBtnLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -44,39 +43,38 @@ const Lecture = ({ user }) => {
     }
   }, [user, params.id, navigate]);
 
-  async function fetchLectures() {
-    try {
-      const { data } = await api.get(`/api/lectures/${params.id}`);
-      setLectures(data.lectures);
-      if (data.lectures.length > 0 && !lecture) {
-        fetchLecture(data.lectures[0]._id);
-      }
-      setLoading(false);
-    } catch (error) {
-      setLoading(false);
-    }
-  }
-
-  async function fetchLecture(id) {
+  const fetchLecture = useCallback(async (id) => {
     setLecLoading(true);
     try {
       const { data } = await api.get(`/api/lecture/${id}`);
       setLecture(data.lecture);
-      setLecLoading(false);
-    } catch (error) {
+    } catch {
+      toast.error("Could not load this lecture. Please retry.");
+    } finally {
       setLecLoading(false);
     }
-  }
+  }, []);
+
+  const fetchLectures = useCallback(
+    async (selectFirst = false) => {
+      try {
+        const { data } = await api.get(`/api/lectures/${params.id}`);
+        setLectures(data.lectures);
+        if (data.lectures.length > 0 && selectFirst)
+          fetchLecture(data.lectures[0]._id);
+      } catch {
+        toast.error("Could not load course content. Please retry.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [params.id, fetchLecture],
+  );
 
   const changeVideoHandler = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onloadend = () => {
-      setVideoPreview(reader.result);
-      setVideo(file);
-    };
+    setVideo(file);
   };
 
   const submitHandler = async (e) => {
@@ -91,11 +89,10 @@ const Lecture = ({ user }) => {
       toast.success(data.message);
       setBtnLoading(false);
       setShow(false);
-      fetchLectures();
+      fetchLectures(!lecture);
       setDescription("");
       setTitle("");
       setVideo("");
-      setVideoPreview("");
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to add lecture");
       setBtnLoading(false);
@@ -107,16 +104,19 @@ const Lecture = ({ user }) => {
       try {
         const { data } = await api.delete(`/api/lecture/${id}`);
         toast.success(data.message);
-        fetchLectures();
+        fetchLectures(!lecture);
       } catch (error) {
-        toast.error(error.response?.data?.message || "Failed to delete lecture");
+        toast.error(
+          error.response?.data?.message || "Failed to delete lecture",
+        );
       }
     }
   };
 
   useEffect(() => {
-    fetchLectures();
-  }, []);
+    setLoading(true);
+    fetchLectures(true);
+  }, [fetchLectures]);
 
   const currentIndex = lectures.findIndex((e) => e._id === lecture?._id);
   const prevLecture = currentIndex > 0 ? lectures[currentIndex - 1] : null;
@@ -154,21 +154,26 @@ const Lecture = ({ user }) => {
                 <div className="lecture-info">
                   <div className="lecture-meta-header">
                     <span className="lecture-tag">
-                      <span className="live-dot"></span> Lecture {currentIndex + 1} of {lectures.length}
+                      <span className="live-dot"></span> Lecture{" "}
+                      {currentIndex + 1} of {lectures.length}
                     </span>
-                    
+
                     <div className="lecture-actions-nav">
                       <button
                         className="nav-lec-btn"
                         disabled={!prevLecture}
-                        onClick={() => prevLecture && fetchLecture(prevLecture._id)}
+                        onClick={() =>
+                          prevLecture && fetchLecture(prevLecture._id)
+                        }
                       >
                         <FiChevronLeft size={16} /> Prev
                       </button>
                       <button
                         className="nav-lec-btn"
                         disabled={!nextLecture}
-                        onClick={() => nextLecture && fetchLecture(nextLecture._id)}
+                        onClick={() =>
+                          nextLecture && fetchLecture(nextLecture._id)
+                        }
                       >
                         Next <FiChevronRight size={16} />
                       </button>
@@ -182,7 +187,10 @@ const Lecture = ({ user }) => {
                     <Link to="/ai" className="ai-assist-btn">
                       <FiCpu /> Ask AI Tutor
                     </Link>
-                    <Link to={`/ai/quiz/${params.id}`} className="quiz-assist-btn">
+                    <Link
+                      to={`/ai/quiz/${params.id}`}
+                      className="quiz-assist-btn"
+                    >
                       <FiFileText /> Take Practice Quiz
                     </Link>
                   </div>
@@ -194,7 +202,10 @@ const Lecture = ({ user }) => {
                   <FiTv size={48} />
                 </div>
                 <h2>Ready to start learning?</h2>
-                <p>Select a lecture from the course playlist on the right to begin watching.</p>
+                <p>
+                  Select a lecture from the course playlist on the right to
+                  begin watching.
+                </p>
               </div>
             )}
           </div>
@@ -233,9 +244,10 @@ const Lecture = ({ user }) => {
                 <form className="add-lecture-form" onSubmit={submitHandler}>
                   <h3>Upload New Lecture</h3>
                   <div className="form-field">
-                    <label>Lecture Title</label>
+                    <label htmlFor="lecture-title">Lecture Title</label>
                     <input
                       type="text"
+                      id="lecture-title"
                       required
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
@@ -243,8 +255,9 @@ const Lecture = ({ user }) => {
                     />
                   </div>
                   <div className="form-field">
-                    <label>Description</label>
+                    <label htmlFor="lecture-description">Description</label>
                     <textarea
+                      id="lecture-description"
                       required
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
@@ -254,7 +267,11 @@ const Lecture = ({ user }) => {
                   <div className="form-field">
                     <label className="file-input-label">
                       <FiUploadCloud size={24} />
-                      <span>{video ? video.name || "Video File Selected" : "Upload Video File"}</span>
+                      <span>
+                        {video
+                          ? video.name || "Video File Selected"
+                          : "Upload Video File"}
+                      </span>
                       <input
                         type="file"
                         required
@@ -263,7 +280,11 @@ const Lecture = ({ user }) => {
                       />
                     </label>
                   </div>
-                  <button disabled={btnLoading} type="submit" className="submit-btn">
+                  <button
+                    disabled={btnLoading}
+                    type="submit"
+                    className="submit-btn"
+                  >
                     {btnLoading ? "Uploading Video..." : "Publish Lecture"}
                   </button>
                 </form>
@@ -276,7 +297,9 @@ const Lecture = ({ user }) => {
                   const isActive = lecture && lecture._id === e._id;
                   return (
                     <div key={e._id} className="playlist-item-wrapper">
-                      <div
+                      <button
+                        type="button"
+                        aria-current={isActive ? "true" : undefined}
                         className={`playlist-item ${isActive ? "is-active" : ""}`}
                         onClick={() => fetchLecture(e._id)}
                       >
@@ -289,12 +312,13 @@ const Lecture = ({ user }) => {
                             {isActive ? "Now Playing" : "Video Lecture"}
                           </span>
                         </div>
-                      </div>
+                      </button>
                       {user && user.role === "admin" && (
                         <button
                           onClick={() => deleteHandler(e._id)}
                           className="delete-lec-icon"
                           title="Delete Lecture"
+                          aria-label={`Delete lecture: ${e.title}`}
                         >
                           <FiTrash2 size={15} />
                         </button>
@@ -303,7 +327,9 @@ const Lecture = ({ user }) => {
                   );
                 })
               ) : (
-                <div className="no-lecs">No lectures available in this course yet.</div>
+                <div className="no-lecs">
+                  No lectures available in this course yet.
+                </div>
               )}
             </div>
           </div>
@@ -314,4 +340,3 @@ const Lecture = ({ user }) => {
 };
 
 export default Lecture;
-

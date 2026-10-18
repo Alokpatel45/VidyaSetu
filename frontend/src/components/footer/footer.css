@@ -1,151 +1,61 @@
-footer {
-  background: #0f172a;
-  color: #cbd5e1;
-  border-top: 1px solid rgba(148, 163, 184, 0.12);
-  margin-top: auto;
-  transition: all 0.3s ease;
+.full-footer,
+.thin-footer {
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  border-top: 1px solid var(--color-border);
+  padding: 20px 28px;
 }
-
-/* Home Page - Full Footer */
-footer.full-footer {
-  padding: clamp(2.5rem, 5vw, 3.5rem) clamp(1.25rem, 4vw, 2rem);
-}
-
-footer.full-footer .footer-content {
-  max-width: 980px;
-  margin: 0 auto;
-  text-align: center;
-}
-
-footer.full-footer .footer-content p {
-  font-size: 0.95rem;
-  line-height: 1.65;
-  text-align: center;
-  margin-bottom: 1.2rem;
-  color: #94a3b8;
-}
-
-footer.full-footer .social-links {
+.footer-content {
+  max-width: 1064px;
+  margin: auto;
   display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.75rem 1.2rem;
-}
-
-footer.full-footer .social-links a {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 50%;
-  color: #e2e8f0;
-  font-size: 1.1rem;
-  background: rgba(248, 250, 252, 0.06);
-  border: 1px solid rgba(248, 250, 252, 0.08);
-  transition: all 0.22s ease;
-}
-
-/* Other Pages / Tabs - Thin Strip Footer */
-footer.thin-footer {
-  padding: 8px 24px;
-}
-
-footer.thin-footer .footer-content {
-  max-width: 100%;
-  margin: 0 auto;
-  display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  align-items: flex-start;
+  gap: 24px;
+  font-size: 11px;
 }
-
-footer.thin-footer .footer-content p {
-  margin: 0;
-  font-size: 0.82rem;
-  color: #94a3b8;
-  white-space: nowrap;
-}
-
-footer.thin-footer .social-links {
+.footer-copyright {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 8px;
 }
-
-footer.thin-footer .social-links a {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.85rem;
-  height: 1.85rem;
-  border-radius: 50%;
-  color: #cbd5e1;
-  font-size: 0.85rem;
-  background: rgba(248, 250, 252, 0.05);
-  border: 1px solid rgba(248, 250, 252, 0.08);
-  transition: all 0.2s ease;
-}
-
-/* Common Link & Hover Effects */
 .footer-made-by {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: 8px;
-  flex-wrap: wrap;
-}
-
-.team-list {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  flex-wrap: wrap;
-}
-
-.team-member-name {
-  color: #38bdf8 !important;
-  font-weight: 600;
-  text-decoration: none;
-  padding: 2px 8px;
-  border-radius: 6px;
-  background: rgba(56, 189, 248, 0.08);
-  border: 1px solid rgba(56, 189, 248, 0.2);
-  transition: all 0.2s ease;
-  white-space: nowrap;
-  font-size: 0.85rem;
-}
-
-.team-member-name:hover {
-  color: #ffffff !important;
-  background: #0284c7;
-  border-color: #38bdf8;
-  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.35);
-  transform: translateY(-1px);
-  text-decoration: none !important;
-}
-
-.team-sep {
-  color: #475569;
+  display: block;
   font-size: 10px;
 }
-
-footer .social-links a:hover {
-  transform: translateY(-2px);
-  color: #fff;
-  background: rgba(14, 165, 233, 0.25);
-  border-color: rgba(56, 189, 248, 0.35);
+.team-list {
+  display: inline;
 }
-
+.team-member-name {
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+.team-member-name:hover {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+.team-sep {
+  padding: 0 5px;
+}
+.social-links {
+  display: flex;
+  gap: 15px;
+  flex-shrink: 0;
+  font-size: 15px;
+}
+.social-links a {
+  color: var(--color-text-muted);
+}
+.social-links a:hover {
+  color: var(--color-accent);
+}
 @media (max-width: 640px) {
-  footer.thin-footer .footer-content {
-    flex-direction: column;
-    justify-content: center;
-    gap: 6px;
-    text-align: center;
+  .full-footer,
+  .thin-footer {
+    padding: 20px 18px;
   }
-  footer.thin-footer .footer-content p {
-    white-space: normal;
+  .footer-content {
+    flex-direction: column;
+    gap: 14px;
   }
 }

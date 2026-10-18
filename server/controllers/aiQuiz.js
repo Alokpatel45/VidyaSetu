@@ -10,25 +10,34 @@ import { z } from "zod";
 const validId = id => typeof id === "string" && mongoose.isObjectIdOrHexString(id);
 
 const aiQuiz = tryCatch(async (req, res) => {
-  const { courseId, numQuestions, difficulty } = req.body;
+  const { courseId, numQuestions, difficulty, generatedQuiz } = req.body;
   if (!validId(courseId)) return res.status(400).json({ message: "Invalid course ID" });
   const course = await Courses.findById(courseId);
   if (!course) return res.status(404).json({ message: "Course not found" });
   const prompt = `Generate ${numQuestions} different multiple-choice questions about ${JSON.stringify(course.title)} at ${difficulty} difficulty. Return ONLY a JSON array. Each object must have question (string), options (four distinct strings), correctAnswer (exactly one of the options), and explanation (a concise explanation of why the answer is correct).`;
-  let raw;
-  try {
-    raw = await generateQuizText(prompt);
-  } catch (error) {
-    return res.status(error.statusCode || 502).json({ message: error.message, code: error.code });
+  let raw = generatedQuiz;
+  if (raw === undefined) {
+    try {
+      raw = await generateQuizText(prompt);
+    } catch {
+      // Match the tutor's browser Puter fallback; no API key or owner token is
+      // required when the browser already has the tutor's working Puter session.
+      return res.status(503).json({
+        code: "QUIZ_BROWSER_GENERATION_REQUIRED",
+        message: "Use the tutor's AI connection to generate this practice quiz.",
+        prompt,
+      });
+    }
   }
   let questions;
   try {
     questions = parseGeneratedQuiz(raw || "", numQuestions);
   } catch {
-    return res.status(502).json({ message: "AI returned an invalid quiz; please try again" });
+    return res.status(generatedQuiz === undefined ? 502 : 400).json({ message: "AI returned an invalid quiz; please try again" });
   }
   const attempt = await QuizAttempt.create({
     user: req.user._id, courseId, topic: course.title, difficulty, questions,
+    generationSource: generatedQuiz === undefined ? "server" : "browser-puter",
   });
   res.status(201).json({ attempt: publicAttempt(attempt) });
 });
