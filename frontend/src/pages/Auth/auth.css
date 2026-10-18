@@ -27,10 +27,10 @@
   letter-spacing: -0.03em;
   margin-bottom: 1.35rem;
   color: var(--color-text);
-  background: linear-gradient(120deg, var(--color-accent) 0%, #6366f1 100%);
+  background: none;
   -webkit-background-clip: text;
   background-clip: text;
-  color: transparent;
+  color: var(--color-text);
 }
 
 .auth-page .auth-form form {
@@ -75,7 +75,7 @@
   font-weight: 600;
   cursor: pointer;
   color: #fff;
-  background: linear-gradient(135deg, var(--color-accent) 0%, #6366f1 100%);
+  background: var(--color-button);
   box-shadow: 0 8px 24px var(--color-accent-glow);
   transition:
     transform 0.18s ease,
@@ -83,7 +83,7 @@
 }
 
 .auth-page .auth-form button:not(.secondary-link):hover {
-  transform: translateY(-2px);
+  transform: none;
   filter: brightness(1.04);
 }
 
@@ -123,4 +123,3 @@
   cursor: not-allowed;
   transform: none;
 }
-

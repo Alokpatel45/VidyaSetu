@@ -61,7 +61,7 @@ test("last checked answer automatically shows the saved score and every question
   expect(screen.getByText("1", { selector: ".score-num" })).toBeTruthy();
   expect(screen.getAllByText("A queue follows FIFO.")).toHaveLength(2);
   await user.click(screen.getByRole("button", { name: "Past Tests", exact: true }));
-  expect(navigate).toHaveBeenCalledWith("/learner/dashboard");
+  expect(navigate).toHaveBeenCalledWith("/learner/dashboard#past-tests");
 });
 test("reload resumes the next unchecked question from the saved server attempt", async () => {
   localStorage.setItem("quiz-attempt:learner:course", "attempt");

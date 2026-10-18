@@ -59,7 +59,7 @@ const CourseDescription = ({ user }) => {
           }
         },
         theme: {
-          color: "rgb(210, 246, 3)",
+          color: "#3478f6",
         },
       };
 
@@ -86,13 +86,17 @@ const CourseDescription = ({ user }) => {
                   className="course-image"
                 />
                 <div className="course-info">
-                  <h2>{course.title}</h2>
-                  <p>Instructor-{course.createdBy}</p>
-                  <p>Duration-{course.duration} weeks</p>
+                  <p className="page-eyebrow">Explore the course</p>
+                  <h1>{course.title}</h1>
+                  <p>Instructor · {course.createdBy}</p>
+                  <p>Duration · {course.duration} weeks</p>
                 </div>
               </div>
-              <p>{course.description}</p>
-              <p>Let's get started with this course At ₹{course.price}</p>
+              <p className="course-description-text">{course.description}</p>
+              <p className="course-purchase-price">
+                ₹{course.price}
+                <small>One-time purchase</small>
+              </p>
               {user && subscriptionIncludes(user.subscription, course._id) ? (
                 <button
                   className="common-btn"
