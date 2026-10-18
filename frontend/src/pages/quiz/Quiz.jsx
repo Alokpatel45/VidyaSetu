@@ -3,7 +3,6 @@ import toast from "react-hot-toast";
 import api from "../../utils/api";
 import { CourseData } from "../../context/CourseContext.jsx";
 import { UserData } from "../../context/UserContext.jsx";
-import { getQuizPuterToken } from "../../services/quizPuter.js";
 import QuizReview from "../../components/quiz/QuizReview.jsx";
 import "./quiz.css";
 import { useParams, useNavigate } from "react-router-dom";
@@ -17,7 +16,6 @@ const Quiz = () => {
   const [restoreError, setRestoreError] = useState(false);
   const [restoreKey, setRestoreKey] = useState(0);
   const requestPending = useRef(false);
-  const reconnectPuter = useRef(false);
   const { fetchCourse, course } = CourseData();
   const { user } = UserData();
   const { id } = useParams();
@@ -54,17 +52,14 @@ const Quiz = () => {
     requestPending.current = true;
     setBusy(true);
     try {
-      const puterToken = await getQuizPuterToken(reconnectPuter.current);
-      reconnectPuter.current = false;
       const { data } = await api.post("/gemini/quiz", {
         courseId: id, numQuestions: 10, difficulty: "medium",
-      }, { headers: { "X-Puter-Token": puterToken } });
+      });
       localStorage.setItem(storageKey, data.attempt._id);
       setAttempt(data.attempt);
       setCurrentIndex(0);
       setSelected("");
     } catch (error) {
-      if (error.response?.data?.code === "PUTER_AUTH_REQUIRED") reconnectPuter.current = true;
       toast.error(error.response?.data?.message || error.message || "Failed to generate quiz");
     } finally { requestPending.current = false; setBusy(false); }
   };
@@ -99,7 +94,6 @@ const Quiz = () => {
     <div className="quiz-welcome-wrapper"><div className="quiz-intro-card">
       <div className="quiz-icon">🎯</div><h1>{course?.title} Quiz</h1>
       <p>Answer 10 AI-generated questions. Check each answer to see the correct answer and explanation. Checked answers are final.</p>
-      <p>Powered by Puter. You may be asked to sign in to Puter. Your Puter account limits apply.</p>
       <div className="quiz-rules"><span>✓ Instant feedback</span><span>✓ Saved results</span><span>✓ Auto-submit</span></div>
       <button className="start-quiz-btn" onClick={startQuiz} disabled={busy}>{busy ? "Generating Quiz…" : "Begin Now"}</button>
     </div></div>
