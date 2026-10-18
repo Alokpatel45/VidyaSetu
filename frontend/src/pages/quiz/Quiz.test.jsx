@@ -4,7 +4,9 @@ import userEvent from "@testing-library/user-event";
 import Quiz from "./Quiz.jsx";
 import PastTests from "../dashboard/PastTests.jsx";
 import api from "../../utils/api";
+import { getQuizPuterToken } from "../../services/quizPuter.js";
 
+vi.mock("../../services/quizPuter.js", () => ({ getQuizPuterToken: vi.fn() }));
 vi.mock("../../utils/api", () => ({ default: { get: vi.fn(), post: vi.fn() } }));
 vi.mock("../../context/CourseContext.jsx", () => ({ CourseData: () => ({ fetchCourse, course: { title: "Data structures" } }) }));
 vi.mock("../../context/UserContext.jsx", () => ({ UserData: () => ({ user: { _id: "learner" } }) }));
@@ -16,6 +18,7 @@ let attempt;
 const snapshot = () => ({ data: { attempt: structuredClone(attempt) } });
 beforeEach(() => {
   vi.clearAllMocks(); localStorage.clear();
+  getQuizPuterToken.mockReset().mockResolvedValue("test-puter-session");
   attempt = { _id: "attempt", courseId: "course", topic: "Data structures", difficulty: "medium", questions, answers: [], score: 0, status: "in_progress" };
   api.get.mockImplementation(async () => snapshot());
   api.post.mockImplementation(async (url, body) => {
@@ -111,4 +114,31 @@ test("history shows an empty state and recovers from network errors", async () =
   const user = userEvent.setup(); render(<PastTests />);
   await user.click(await screen.findByRole("button", { name: "Retry" }));
   await screen.findByText("Your completed quizzes will appear here.");
+});
+
+test("quiz generation forwards Puter credentials only for generation, never answer checks", async () => {
+  const user = await start();
+  expect(api.post).toHaveBeenCalledWith("/gemini/quiz", {
+    courseId: "course", numQuestions: 10, difficulty: "medium",
+  }, { headers: { "X-Puter-Token": "test-puter-session" } });
+  await user.click(screen.getByRole("button", { name: "B Queue" }));
+  await user.click(screen.getByRole("button", { name: "Check", exact: true }));
+  await screen.findByText("Answer saved and locked.");
+  expect(api.post.mock.calls.find(([url]) => url.endsWith("/answers"))).toHaveLength(2);
+});
+test("cancelled Puter sign-in keeps Begin Now available without calling the backend", async () => {
+  getQuizPuterToken.mockRejectedValueOnce(new Error("Sign-in cancelled"));
+  const user = userEvent.setup(); render(<Quiz />);
+  await user.click(await screen.findByRole("button", { name: "Begin Now" }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Begin Now" }).disabled).toBe(false));
+  expect(api.post).not.toHaveBeenCalled();
+});
+test("expired Puter credentials trigger sign-in again on the next explicit Start", async () => {
+  api.post.mockRejectedValueOnce({ response: { data: { code: "PUTER_AUTH_REQUIRED", message: "Reconnect Puter" } } });
+  const user = userEvent.setup(); render(<Quiz />);
+  await user.click(await screen.findByRole("button", { name: "Begin Now" }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Begin Now" }).disabled).toBe(false));
+  await user.click(screen.getByRole("button", { name: "Begin Now" }));
+  await screen.findByRole("heading", { name: questions[0].question });
+  expect(getQuizPuterToken).toHaveBeenLastCalledWith(true);
 });

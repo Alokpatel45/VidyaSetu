@@ -26,7 +26,7 @@ jobs:
         working-directory: frontend
       - run: npm test
         working-directory: frontend
-      - run: npx eslint src/App.jsx src/pages/quiz/Quiz.jsx src/pages/quiz/Quiz.test.jsx src/pages/dashboard/Dashboard.jsx src/pages/dashboard/PastTests.jsx src/components/quiz/QuizReview.jsx
+      - run: npx eslint src/components/header/Header.jsx src/services/quizPuter.js src/services/quizPuter.test.jsx src/App.jsx src/pages/quiz/Quiz.jsx src/pages/quiz/Quiz.test.jsx src/pages/dashboard/Dashboard.jsx src/pages/dashboard/PastTests.jsx src/components/quiz/QuizReview.jsx
         working-directory: frontend
       - run: npm run build
         working-directory: frontend
