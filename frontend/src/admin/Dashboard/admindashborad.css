@@ -5,7 +5,7 @@
   flex-wrap: wrap;
   gap: 20px;
   padding: 40px 20px;
-  background: linear-gradient(135deg, #f9f9f9, #eef3da);
+  background: var(--color-page-background);
 
   .box {
     background: linear-gradient(135deg, #d2f603, #b0cb00);
