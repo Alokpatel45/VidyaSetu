@@ -17,12 +17,18 @@ const response = () => ({ code: 200, status(code) { this.code = code; return thi
 const originalCourseLookup = Courses.findById;
 const originalCreate = QuizAttempt.create;
 const originalPost = axios.post;
+const originalPuterToken = process.env.PUTER_AUTH_TOKEN;
+const originalGroqKey = process.env.GROQ_API_KEY;
+const originalGeminiKey = process.env.GEMINI_API;
 const original = { findOne: QuizAttempt.findOne, findOneAndUpdate: QuizAttempt.findOneAndUpdate, find: QuizAttempt.find };
 afterEach(() => {
   Object.assign(QuizAttempt, original);
   Courses.findById = originalCourseLookup;
   QuizAttempt.create = originalCreate;
   axios.post = originalPost;
+  for (const [key, value] of [["PUTER_AUTH_TOKEN", originalPuterToken], ["GROQ_API_KEY", originalGroqKey], ["GEMINI_API", originalGeminiKey]]) {
+    if (value === undefined) delete process.env[key]; else process.env[key] = value;
+  }
 });
 
 function database() {
@@ -125,34 +131,39 @@ test("history queries only this user's completed tests and uses bounded paginati
 });
 
 
-test("Puter-generated quiz is validated, saved server-side and returned without answer keys or tokens", async () => {
+test("server-owned Puter quiz needs no browser token and hides answer keys and owner credentials", async () => {
+  process.env.PUTER_AUTH_TOKEN = "owner-session";
   Courses.findById = async () => ({ title: "Data structures" });
   axios.post = async (url, body, config) => {
-    assert.equal(config.headers.Authorization, "Bearer learner-session");
-    return { data: { choices: [{ message: { content: JSON.stringify([question]) } }] } };
+    assert.equal(body.auth_token, "owner-session");
+    return { data: { success: true, result: { message: { content: JSON.stringify([question]) } } } };
   };
   QuizAttempt.create = async data => {
     assert.equal(data.user, user);
     assert.equal(data.questions[0].correctAnswer, "Queue");
     assert.equal(data.puterToken, undefined);
-    assert.equal(JSON.stringify(data).includes("learner-session"), false);
+    assert.equal(JSON.stringify(data).includes("owner-session"), false);
     return { ...fresh(), ...data };
   };
   const res = response();
-  await aiQuiz({ ...req({ courseId: id, numQuestions: 1, difficulty: "medium" }), headers: { "x-puter-token": "learner-session" } }, res);
+  await aiQuiz(req({ courseId: id, numQuestions: 1, difficulty: "medium" }), res);
   assert.equal(res.code, 201);
   assert.deepEqual(res.body.attempt.questions, [{ question: question.question, options: question.options }]);
-  assert.equal(JSON.stringify(res.body).includes("learner-session"), false);
+  assert.equal(JSON.stringify(res.body).includes("owner-session"), false);
 });
-test("quiz generation requires a Puter session before database or AI access", async () => {
-  Courses.findById = () => assert.fail("must not look up course");
-  const res = response(); await aiQuiz(req({ courseId: id, numQuestions: 1 }), res);
-  assert.equal(res.code, 400);
-  assert.equal(res.body.code, "PUTER_AUTH_REQUIRED");
+test("browser-supplied Puter credentials are not used as a substitute for server configuration", async () => {
+  delete process.env.PUTER_AUTH_TOKEN; delete process.env.GROQ_API_KEY; delete process.env.GEMINI_API;
+  Courses.findById = async () => ({ title: "Data structures" });
+  axios.post = () => assert.fail("must not use learner credential");
+  const res = response();
+  await aiQuiz({ ...req({ courseId: id, numQuestions: 1 }), headers: { "x-puter-token": "untrusted-browser-session" } }, res);
+  assert.equal(res.code, 503);
+  assert.equal(res.body.code, "QUIZ_AI_NOT_CONFIGURED");
 });
 test("invalid Puter-generated questions are rejected without creating an attempt", async () => {
+  process.env.PUTER_AUTH_TOKEN = "owner-session";
   Courses.findById = async () => ({ title: "Data structures" });
-  axios.post = async () => ({ data: { choices: [{ message: { content: "[]" } }] } });
+  axios.post = async () => ({ data: { success: true, result: { message: { content: "[]" } } } });
   QuizAttempt.create = () => assert.fail("must not save malformed quiz");
   const res = response();
   await aiQuiz({ ...req({ courseId: id, numQuestions: 1 }), headers: { "x-puter-token": "session" } }, res);

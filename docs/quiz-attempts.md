@@ -1,43 +1,48 @@
 # Saved quiz attempts
 
-Signed-in learners start a quiz from a course. They select an option and click Check to save it, see the correct answer and its AI-generated explanation, and lock the answer. Checking the final question automatically completes the attempt. The result contains the score and a question-by-question review. Student Dashboard → Past Tests lists completed attempts and opens their saved reviews.
+Signed-in VidyaSetu learners start a quiz, select an option and click Check. The backend saves the answer, reveals its correct answer and explanation, and locks it. Checking the final question completes the attempt automatically. Student Dashboard → Past Tests contains saved scores and question reviews.
 
-The server uses Puter to generate and validate questions from the course title and stores the answer key in MongoDB. Unchecked answers and explanations are excluded from API responses. Scores are derived on the server. Every read and answer update is scoped to the authenticated user. A version condition on the atomic update prevents concurrent writes from overwriting a checked answer. Retrying the same answer returns the saved result without changing the score.
+## No learner Puter login
+
+The quiz frontend calls only the VidyaSetu backend. It does not import Puter, open a Puter sign-in/permission popup, ask learners for credentials, or forward `X-Puter-Token`. Normal VidyaSetu authentication remains required for ownership and history.
+
+Generation provider selection:
+
+1. When the backend has `PUTER_AUTH_TOKEN`, generate through Puter's native `/drivers/call` route using the server-owned account. This needs no Gemini/Groq provider key. The native request matches `puter.ai.chat()` from the installed SDK: interface `puter-chat-completion`, driver `ai-chat`, method `complete`, model `gemini-2.5-flash`.
+2. Otherwise preserve the original server AI configuration: `GROQ_API_KEY`, then `GEMINI_API`. This is the pattern used by the existing "no 3rd party login" AI tutor implementation.
+3. If no server credential is configured, return HTTP 503 with `QUIZ_AI_NOT_CONFIGURED`. Do not try an interactive browser fallback or claim the learner's Puter session expired.
+
+To use Puter with no learner popup, the owner must configure `PUTER_AUTH_TOKEN` in the backend host's secret environment settings. Obtain it in the owner's Puter dashboard; never commit it or place it in a frontend/VITE variable. AI usage consumes the configured server account's credits/limits. No hosting secret has been created, read, or changed by this PR. Without a configured server credential there is no authenticated AI generation path.
+
+The prior implementation incorrectly forwarded browser app sessions to Puter's separate OpenAI-compatible gateway and mapped both 401 and 403 to "session expired". This change uses native driver responses and distinguishes authentication, permission, quota, and availability failures, including failures embedded in HTTP 200 envelopes. Owner authentication/permission failures return service errors, never learner reconnect instructions. There are no automatic paid retries or provider changes after an attempted Puter generation fails.
+
+## Storage and security
+
+The server builds the prompt from the stored course title, validates AI JSON, and saves the answer key in MongoDB. It rejects malformed questions, duplicate options, unmatched answers, missing explanations, and incorrect question counts. Unchecked answer keys are excluded from responses. Grading and scoring run on the server. Attempts are scoped to their authenticated owner, and atomic version guards prevent concurrent answer overwrites. Same-answer retries are idempotent.
+
+Puter tokens remain on the backend and are not saved in attempts, returned to the client, or logged. Raw provider/Axios errors are never exposed because they can contain credentials.
 
 ## API
 
-All endpoints use the existing authentication middleware, under `/gemini`.
+All routes are under `/gemini` and require the existing VidyaSetu authentication.
 
 | Method | Path | Input / result |
 | --- | --- | --- |
-| POST | `/quiz` | `{courseId, numQuestions, difficulty}` plus `X-Puter-Token` → `{attempt}` |
-| GET | `/quiz/attempts?page=1` | Completed tests for the current user, 20 per page; `{tests, hasMore}` |
-| GET | `/quiz/attempts/:attemptId` | Current user's attempt; public questions plus checked answers |
+| POST | `/quiz` | `{courseId, numQuestions, difficulty}` → `{attempt}`; no learner Puter token |
+| GET | `/quiz/attempts?page=1` | Current user's completed tests, 20 per page; `{tests, hasMore}` |
+| GET | `/quiz/attempts/:attemptId` | Public questions and already checked answers |
 | POST | `/quiz/attempts/:attemptId/answers` | `{questionIndex, selectedAnswer}` → saved `{attempt}` |
 
-`POST /quiz` requires VidyaSetu authentication, a Puter session in `X-Puter-Token`, and `courseId` rather than a caller-supplied topic. The frontend in this change uses the new contract. Invalid AI JSON, duplicate options, a missing explanation, incorrect question count, or an answer absent from the options is rejected before creating an attempt.
+Deploy backend before or with frontend. No database migration or new npm dependency is required. The existing MongoDB connection stores `quizattempts`. Old browser-only results cannot be recovered.
 
-## Persistence and rollout
-
-Deploy the backend before or with the frontend. The existing MongoDB connection stores a new `quizattempts` collection; no new service, secret, or data migration is required. Existing quiz results cannot be recovered because the old implementation calculated them only in the browser. Quiz generation no longer uses `GEMINI_API` or `GROQ_API_KEY`.
-
-Checked answers are persisted immediately. A per-user, per-course localStorage pointer allows the same browser to reload the current attempt from the server. Only checked selections are recovered; an option selected without Check is not saved. Completed tests can be accessed from any signed-in browser using Past Tests. There is no cross-device in-progress-attempt picker in this change.
-
-## Puter generation
-
-Begin Now / Try Again obtains a session through the installed Puter browser SDK. Existing SDK sessions are reused; otherwise sign-in is invoked directly from the click so mobile popup rules are respected. The UI explains that Puter sign-in and account limits apply. Cancelled/blocked sign-in leaves the start button available; an expired session prompts a fresh sign-in on the next explicit start.
-
-Only the generation request sends `X-Puter-Token` to the VidyaSetu backend. The backend calls Puter's OpenAI-compatible chat gateway using that request's token and `google/gemini-2.5-flash`. This is a Puter-hosted model call and does not require a Google API key. Model output is validated and saved on the server, so unchecked answer keys never pass through browser generation. Check, resume and history use the existing VidyaSetu authentication without needing Puter again.
-
-Puter tokens are not written to the attempt, application storage, URLs, or logs. Upstream errors are normalized to prevent request-header leakage. Invalid sessions return `PUTER_AUTH_REQUIRED`, usage/credit limits return `PUTER_LIMIT_REACHED`, and unavailable/empty responses return `PUTER_UNAVAILABLE`. No automatic paid retries or provider-key fallback is added. No additional npm dependency is needed.
-
-References: [Puter sign-in](https://docs.puter.com/Auth/signIn/), [sign-in result](https://docs.puter.com/Objects/signinresult/), [Puter gateway](https://developer.puter.com/tutorials/use-openai-sdk-with-puter/).
+A per-user, per-course localStorage pointer resumes the latest attempt in the same browser. Checked answers are recovered from the server; selected-but-unchecked options are not saved. Completed tests are available in any signed-in browser.
 
 ## Validation
 
-- `npm test --prefix server`: 21 tests covering keyless Puter generation, per-user credentials, provider failures, scoring, validation, hidden answer keys, ownership, replay protection, concurrency guards, automatic completion, and paginated history. Controller tests use model stubs; they do not establish live MongoDB connectivity.
-- `npm test --prefix frontend`: 14 jsdom tests covering Puter sign-in/reconnect, cancellation, token forwarding, Check gating and locking, failed/lost response recovery, resume, automatic results, and history review/error states.
-- Frontend production build and ESLint for all changed JavaScript/JSX frontend files.
-- CI runs these checks on pull requests to main and pushes to main.
+- 26 backend tests: native Puter request/response contracts, HTTP 200 error envelopes, server credential selection, no learner-token dependency, no credential leakage, validated persistence, scoring, ownership, locking, retries, concurrent writes, and paginated history.
+- 9 frontend component tests: start without Puter credentials, unavailable-service recovery without reconnect prompts, Check gating/locking, resume, lost/failed save responses, automatic results, and history review.
+- Frontend production build and changed-file ESLint.
 
-Live Puter generation/sign-in, live MongoDB persistence, and real-browser rendering still require a configured runtime smoke test. The local browser run was unavailable because Chromium could not be downloaded in the task environment.
+Automated tests mock external AI and MongoDB boundaries. Authenticated live Puter generation and live persistence still need a runtime smoke test; no configured owner credential is available in the task workspace. Browser/mobile visual verification remains pending.
+
+References: [Puter server authentication](https://docs.puter.com/getting-started/), [Puter Node guide](https://developer.puter.com/tutorials/puter-js-node-js/). Native wire contracts were checked against the installed `@heyputer/puter.js` chat and network modules.

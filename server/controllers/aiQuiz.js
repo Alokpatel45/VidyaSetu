@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import tryCatch from "../middlewares/tryCatch.js";
-import { generatePuterQuizText, requirePuterToken } from "../services/puterQuiz.js";
+import { generateQuizText } from "../services/puterQuiz.js";
 import { Courses } from "../models/Courses.js";
 import { QuizAttempt } from "../models/QuizAttempt.js";
 import { submitAnswer } from "../services/quizScoring.js";
@@ -12,18 +12,12 @@ const validId = id => typeof id === "string" && mongoose.isObjectIdOrHexString(i
 const aiQuiz = tryCatch(async (req, res) => {
   const { courseId, numQuestions, difficulty } = req.body;
   if (!validId(courseId)) return res.status(400).json({ message: "Invalid course ID" });
-  let puterToken;
-  try {
-    puterToken = requirePuterToken(req.headers?.["x-puter-token"]);
-  } catch (error) {
-    return res.status(error.statusCode).json({ message: error.message, code: error.code });
-  }
   const course = await Courses.findById(courseId);
   if (!course) return res.status(404).json({ message: "Course not found" });
   const prompt = `Generate ${numQuestions} different multiple-choice questions about ${JSON.stringify(course.title)} at ${difficulty} difficulty. Return ONLY a JSON array. Each object must have question (string), options (four distinct strings), correctAnswer (exactly one of the options), and explanation (a concise explanation of why the answer is correct).`;
   let raw;
   try {
-    raw = await generatePuterQuizText(prompt, puterToken);
+    raw = await generateQuizText(prompt);
   } catch (error) {
     return res.status(error.statusCode || 502).json({ message: error.message, code: error.code });
   }
