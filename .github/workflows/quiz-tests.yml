@@ -26,7 +26,7 @@ jobs:
         working-directory: frontend
       - run: npm test
         working-directory: frontend
-      - run: npx eslint src/components/header/Header.jsx src/components/courseCard/CourseCard.jsx src/home/Home.jsx src/pages/courses/Courses.jsx src/pages/courses/LearningUI.test.jsx src/pages/coursestudy/CourseStudy.jsx src/pages/courseDescription/CourseDescription.jsx src/lecture/Lecture.jsx src/App.jsx src/pages/quiz/Quiz.jsx src/pages/quiz/Quiz.test.jsx src/pages/dashboard/Dashboard.jsx src/pages/dashboard/PastTests.jsx src/components/quiz/QuizReview.jsx
+      - run: npx eslint src/utils/puterChat.js src/utils/puterChat.test.jsx src/pages/chatWithAI/Ai.jsx src/components/header/Header.jsx src/components/courseCard/CourseCard.jsx src/home/Home.jsx src/pages/courses/Courses.jsx src/pages/courses/LearningUI.test.jsx src/pages/coursestudy/CourseStudy.jsx src/pages/courseDescription/CourseDescription.jsx src/lecture/Lecture.jsx src/App.jsx src/pages/quiz/Quiz.jsx src/pages/quiz/Quiz.test.jsx src/pages/dashboard/Dashboard.jsx src/pages/dashboard/PastTests.jsx src/components/quiz/QuizReview.jsx
         working-directory: frontend
       - run: npm run build
         working-directory: frontend

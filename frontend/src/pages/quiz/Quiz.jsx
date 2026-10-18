@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import api from "../../utils/api";
+import { askPuter } from "../../utils/puterChat";
 import { CourseData } from "../../context/CourseContext.jsx";
 import { UserData } from "../../context/UserContext.jsx";
 import QuizReview from "../../components/quiz/QuizReview.jsx";
@@ -71,11 +72,28 @@ const Quiz = () => {
     requestPending.current = true;
     setBusy(true);
     try {
-      const { data } = await api.post("/gemini/quiz", {
-        courseId: id,
-        numQuestions: 10,
-        difficulty: "medium",
-      });
+      const request = { courseId: id, numQuestions: 10, difficulty: "medium" };
+      let data;
+      try {
+        ({ data } = await api.post("/gemini/quiz", request));
+      } catch (error) {
+        const fallback = error.response?.data;
+        if (
+          error.response?.status !== 503 ||
+          fallback?.code !== "QUIZ_BROWSER_GENERATION_REQUIRED" ||
+          typeof fallback.prompt !== "string"
+        )
+          throw error;
+        const generatedQuiz = await askPuter(
+          [{ role: "user", content: fallback.prompt }],
+          { existingSessionOnly: true },
+        );
+        // Persist validated practice questions before displaying any quiz UI.
+        ({ data } = await api.post("/gemini/quiz", {
+          ...request,
+          generatedQuiz,
+        }));
+      }
       localStorage.setItem(storageKey, data.attempt._id);
       setAttempt(data.attempt);
       setCurrentIndex(0);

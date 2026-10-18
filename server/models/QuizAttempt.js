@@ -18,6 +18,8 @@ const schema = new mongoose.Schema({
   courseId: { type: mongoose.Schema.Types.ObjectId, ref: "Courses", required: true },
   topic: { type: String, required: true },
   difficulty: { type: String, enum: ["easy", "medium", "hard"], required: true },
+  // Browser-generated practice questions are untrusted study material, not exam certification.
+  generationSource: { type: String, enum: ["server", "browser-puter"], default: "server" },
   questions: { type: [questionSchema], required: true },
   answers: { type: [answerSchema], default: [] },
   score: { type: Number, default: 0 },

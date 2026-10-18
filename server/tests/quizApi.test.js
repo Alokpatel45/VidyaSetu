@@ -158,7 +158,8 @@ test("browser-supplied Puter credentials are not used as a substitute for server
   const res = response();
   await aiQuiz({ ...req({ courseId: id, numQuestions: 1 }), headers: { "x-puter-token": "untrusted-browser-session" } }, res);
   assert.equal(res.code, 503);
-  assert.equal(res.body.code, "QUIZ_AI_NOT_CONFIGURED");
+  assert.equal(res.body.code, "QUIZ_BROWSER_GENERATION_REQUIRED");
+  assert.match(res.body.prompt, /Data structures/);
 });
 test("invalid Puter-generated questions are rejected without creating an attempt", async () => {
   process.env.PUTER_AUTH_TOKEN = "owner-session";
@@ -168,4 +169,36 @@ test("invalid Puter-generated questions are rejected without creating an attempt
   const res = response();
   await aiQuiz({ ...req({ courseId: id, numQuestions: 1 }), headers: { "x-puter-token": "session" } }, res);
   assert.equal(res.code, 502);
+});
+
+
+test("browser Puter practice is validated and persisted with server-owned identity and zero starting score", async () => {
+  delete process.env.PUTER_AUTH_TOKEN; delete process.env.GROQ_API_KEY; delete process.env.GEMINI_API;
+  Courses.findById = async () => ({ title: "Data structures" });
+  axios.post = () => assert.fail("browser-generated practice needs no provider key");
+  QuizAttempt.create = async data => {
+    assert.equal(data.user, user);
+    assert.equal(data.topic, "Data structures");
+    assert.equal(data.generationSource, "browser-puter");
+    assert.equal(data.score, undefined);
+    assert.equal(data.status, undefined);
+    assert.equal(data.answers, undefined);
+    return { ...fresh(), ...data };
+  };
+  const res = response();
+  await aiQuiz(req({ courseId: id, numQuestions: 1, difficulty: "medium", generatedQuiz: JSON.stringify([question]), score: 100, answers: [{ isCorrect: true }], status: "completed", user: otherUser }), res);
+  assert.equal(res.code, 201);
+  assert.equal(res.body.attempt.score, 0);
+  assert.equal(res.body.attempt.status, "in_progress");
+  assert.equal(res.body.attempt.questions[0].correctAnswer, undefined);
+});
+test("malformed browser output, wrong count and invalid answer keys cannot create practice attempts", async () => {
+  Courses.findById = async () => ({ title: "Data structures" });
+  QuizAttempt.create = () => assert.fail("must validate before saving");
+  for (const raw of ["not JSON", "[]", JSON.stringify([{ ...question, correctAnswer: "Not an option" }])]) {
+    const res = response();
+    await aiQuiz(req({ courseId: id, numQuestions: 1, generatedQuiz: raw }), res);
+    assert.equal(res.code, 400);
+  }
+  assert.equal(geminiQuizSchema.safeParse({ courseId: id, numQuestions: 1, generatedQuiz: "x".repeat(80001) }).success, false);
 });

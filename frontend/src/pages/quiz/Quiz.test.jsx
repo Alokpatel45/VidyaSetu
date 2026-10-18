@@ -4,6 +4,8 @@ import userEvent from "@testing-library/user-event";
 import Quiz from "./Quiz.jsx";
 import PastTests from "../dashboard/PastTests.jsx";
 import api from "../../utils/api";
+import { askPuter } from "../../utils/puterChat";
+vi.mock("../../utils/puterChat", () => ({ askPuter: vi.fn() }));
 
 vi.mock("../../utils/api", () => ({ default: { get: vi.fn(), post: vi.fn() } }));
 vi.mock("../../context/CourseContext.jsx", () => ({ CourseData: () => ({ fetchCourse, course: { title: "Data structures" } }) }));
@@ -127,4 +129,34 @@ test("server configuration errors leave the start button available without a rec
   await user.click(await screen.findByRole("button", { name: "Begin Now" }));
   await waitFor(() => expect(screen.getByRole("button", { name: "Begin Now" }).disabled).toBe(false));
   expect(api.post).toHaveBeenCalledTimes(1);
+});
+
+
+test("quiz reuses tutor Puter generation when the server has no AI configuration, then saves before displaying", async () => {
+  const user = userEvent.setup();
+  const generatedQuiz = JSON.stringify([{ question: "From tutor" }]);
+  askPuter.mockResolvedValueOnce(generatedQuiz);
+  api.post.mockRejectedValueOnce({ response: { status: 503, data: { code: "QUIZ_BROWSER_GENERATION_REQUIRED", prompt: "Generate course questions" } } });
+  render(<Quiz />);
+  await user.click(await screen.findByRole("button", { name: "Begin Now" }));
+  await screen.findByRole("heading", { name: questions[0].question });
+  expect(askPuter).toHaveBeenCalledWith([{ role: "user", content: "Generate course questions" }], { existingSessionOnly: true });
+  expect(api.post.mock.calls[1]).toEqual(["/gemini/quiz", { courseId: "course", numQuestions: 10, difficulty: "medium", generatedQuiz }]);
+  expect(localStorage.getItem("quiz-attempt:learner:course")).toBe("attempt");
+});
+test("failed Puter generation leaves the quiz restartable and creates no local-only attempt", async () => {
+  askPuter.mockRejectedValueOnce(new Error("Not connected"));
+  api.post.mockRejectedValueOnce({ response: { status: 503, data: { code: "QUIZ_BROWSER_GENERATION_REQUIRED", prompt: "Generate questions" } } });
+  const user = userEvent.setup(); render(<Quiz />);
+  await user.click(await screen.findByRole("button", { name: "Begin Now" }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Begin Now" }).disabled).toBe(false));
+  expect(api.post).toHaveBeenCalledTimes(1);
+  expect(localStorage.getItem("quiz-attempt:learner:course")).toBeNull();
+});
+test("unauthorized requests do not invoke browser AI", async () => {
+  api.post.mockRejectedValueOnce({ response: { status: 401, data: { message: "Unauthorized" } } });
+  const user = userEvent.setup(); render(<Quiz />);
+  await user.click(await screen.findByRole("button", { name: "Begin Now" }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Begin Now" }).disabled).toBe(false));
+  expect(askPuter).not.toHaveBeenCalled();
 });

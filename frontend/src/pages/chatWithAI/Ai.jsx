@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
-import { puter } from "@heyputer/puter.js";
+import { askPuter } from "../../utils/puterChat";
 import {
   FiSend,
   FiUser,
@@ -257,20 +257,7 @@ const Ai = () => {
       // Secondary Fallback: Puter.js (Only if server API fails)
       if (!answer) {
         try {
-          const response = await puter.ai.chat(messages, {
-            model: "gemini-2.5-flash",
-          });
-
-          if (typeof response === "string") {
-            answer = response;
-          } else if (response?.message?.content) {
-            answer =
-              typeof response.message.content === "string"
-                ? response.message.content
-                : response.message.content[0]?.text;
-          } else if (response?.text) {
-            answer = response.text;
-          }
+          answer = await askPuter(messages);
         } catch (puterErr) {
           console.warn("Puter fallback failed:", puterErr);
         }
