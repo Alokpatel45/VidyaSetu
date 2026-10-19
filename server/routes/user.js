@@ -1,4 +1,5 @@
 import express from "express";
+import { forgotPassword, resetPassword } from "../controllers/passwordReset.js";
 import rateLimit from "express-rate-limit";
 
 import {
@@ -15,6 +16,8 @@ import {
   loginSchema,
   verifySchema,
   updateRoleSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
 } from "../schemas/userSchema.js";
 
 const authLimiter = rateLimit({
@@ -36,6 +39,9 @@ router.post("/user/register", authLimiter, validate(registerSchema), Register);
 router.post("/user/verify", authLimiter, validate(verifySchema), verifyUser);
 
 router.post("/user/login", authLimiter, validate(loginSchema), loginUser);
+
+router.post("/user/forgot-password", authLimiter, validate(forgotPasswordSchema), forgotPassword);
+router.post("/user/reset-password", authLimiter, validate(resetPasswordSchema), resetPassword);
 
 router.get("/user/me", isAuth, myProfile);
 

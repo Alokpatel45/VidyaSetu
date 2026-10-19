@@ -4,6 +4,8 @@ import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import Home from "./home/Home";
 import Header from "./components/header/Header";
 import Login from "./pages/Auth/Login";
+import ForgotPassword from "./pages/Auth/ForgotPassword";
+import ResetPassword from "./pages/Auth/ResetPassword";
 import Register from "./pages/Auth/Register";
 import Verify from "./pages/Auth/Verify";
 import Footer from "./components/footer/Footer";
@@ -47,6 +49,8 @@ const App = () => {
                   path="/account"
                   element={isAuth ? <Account user={user} /> : <Login />}
                 />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/login" element={isAuth ? <Home /> : <Login />} />
                 <Route
                   path="/register"
