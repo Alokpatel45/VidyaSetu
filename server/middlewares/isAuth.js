@@ -24,7 +24,7 @@ export const isAuth = async (req, res, next) => {
         const decodedData = verifyAccessToken(accessToken);
         req.user = await User.findById(decodedData._id).select("-password");
 
-        if (req.user) {
+        if (req.user && (!req.user.passwordChangedAt || (decodedData.iat * 1000) >= req.user.passwordChangedAt.getTime())) {
           return next();
         }
       } catch (accessError) {
@@ -42,10 +42,8 @@ export const isAuth = async (req, res, next) => {
     const decodedRefresh = verifyRefreshToken(refreshToken);
     req.user = await User.findById(decodedRefresh._id).select("-password");
 
-    if (!req.user) {
-      return res.status(401).json({
-        message: "login first",
-      });
+    if (!req.user || !req.user.refreshTokenIssuedAt || (req.user.passwordChangedAt && (decodedRefresh.iat * 1000) < req.user.passwordChangedAt.getTime())) {
+      return res.status(401).json({ message: "Session expired, please login again" });
     }
 
     // Replay attack prevention: Check if token's iat matches user's stored iat
