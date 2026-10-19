@@ -13,7 +13,7 @@ jobs:
     env:
       BACKEND_URL: https://vidyasetu-backend-sng1.onrender.com
     steps:
-      - name: Check public homepage and 50 concurrent backend requests
+      - name: Check public homepage and 100 concurrent backend requests
         shell: bash
         run: |
           python3 - <<'PY'
@@ -43,15 +43,15 @@ jobs:
               raise SystemExit('Backend health validation failed; refusing to run concurrent load.')
           for endpoint in ('/api/health','/api/course/all'):
               url=base+endpoint
-              # Bounded one-shot test: 50 GETs only, no auth or writes.
-              with concurrent.futures.ThreadPoolExecutor(max_workers=50) as pool:
-                  rows=list(pool.map(lambda _:get(url),range(50)))
+              # Bounded one-shot test: 100 GETs only, no auth or writes.
+              with concurrent.futures.ThreadPoolExecutor(max_workers=100) as pool:
+                  rows=list(pool.map(lambda _:get(url),range(100)))
               success=[ms for status,ms,body,err in rows if status==200]
               failures=[(status,err) for status,ms,body,err in rows if status!=200]
               print(endpoint,'total=',len(rows),'ok=',len(success),'failed=',len(failures),
                     'avg_ms=',round(statistics.mean(success)) if success else 'N/A',
                     'max_ms=',max(success) if success else 'N/A',
                     'errors=',failures[:5],flush=True)
-              if len(success)!=50:
+              if len(success)!=100:
                   raise SystemExit('Some backend requests failed.')
           PY
