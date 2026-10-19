@@ -30,6 +30,8 @@ const userSchema = new mongoose.Schema(
         ref: "Courses",
       },
     ],
+    passwordResetTokenHash: { type: String, default: null, select: false },
+    passwordResetExpiresAt: { type: Date, default: null, select: false },
     refreshTokenIssuedAt: {
       type: Date,
       default: null,
