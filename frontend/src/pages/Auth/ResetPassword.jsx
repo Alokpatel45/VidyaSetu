@@ -13,6 +13,7 @@ export default function ResetPassword() {
   const [loading, setLoading] = useState(false);
   async function submit(event) {
     event.preventDefault();
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*]).{8,}$/.test(password)) return setMessage("Use 8+ characters with uppercase, lowercase, number and special character (!@#$%^&*).");
     if (password !== confirm) return setMessage("Passwords do not match.");
     setLoading(true);
     setMessage("");
@@ -34,6 +35,7 @@ export default function ResetPassword() {
     : <><form onSubmit={submit}>
       <label htmlFor="new-password">New password</label>
       <input id="new-password" type="password" autoComplete="new-password" required minLength={8} value={password} onChange={e => setPassword(e.target.value)} />
+      <small className="auth-hint">8+ characters, uppercase, lowercase, number and special character (!@#$%^&*).</small>
       <label htmlFor="confirm-password">Confirm password</label>
       <input id="confirm-password" type="password" autoComplete="new-password" required value={confirm} onChange={e => setConfirm(e.target.value)} />
       <button className="common-btn" disabled={loading}>{loading ? "Please wait..." : "Reset password"}</button>
