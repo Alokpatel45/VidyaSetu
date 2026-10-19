@@ -45,6 +45,7 @@ export async function resetPassword(req, res, next) {
     user.passwordResetTokenHash = null;
     user.passwordResetExpiresAt = null;
     user.refreshTokenIssuedAt = null;
+    user.passwordChangedAt = new Date();
     await user.save();
     res.clearCookie("refreshToken", clearAuthCookieOptions());
     return res.status(200).json({ message: "Password updated. Please log in with your new password." });
