@@ -69,3 +69,6 @@ export const updateRoleSchema = z.object({
     errorMap: () => ({ message: "Role must be 'user' or 'admin'" }),
   }),
 });
+
+export const forgotPasswordSchema = z.object({ email: emailSchema });
+export const resetPasswordSchema = z.object({ token: z.string().regex(/^[a-f0-9]{64}$/i, "Invalid reset token"), password: passwordSchema });
